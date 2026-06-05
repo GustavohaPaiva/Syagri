@@ -1,9 +1,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { supabase } from '../services/supabase'
+import { requireSupabase } from '../services/supabase'
 import { AuthContext } from './auth-context'
 
 async function fetchProfile(userId) {
+  const supabase = requireSupabase()
   const { data, error } = await supabase
     .from('profiles')
     .select('id, nome, role')
@@ -59,6 +60,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let cancelled = false
+    const supabase = requireSupabase()
 
     void (async () => {
       try {
@@ -106,7 +108,7 @@ export function AuthProvider({ children }) {
   const signOut = useCallback(async () => {
     clearAuth()
     try {
-      await supabase.auth.signOut()
+      await requireSupabase().auth.signOut()
     } catch {
       // Estado local já foi limpo; SIGNED_OUT pode não disparar em falha de rede.
     }

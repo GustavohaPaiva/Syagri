@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 
 function AuthLoadingScreen({ message }) {
   return (
-    <div className="flex min-h-svh items-center justify-center bg-background">
+    <div className="flex min-h-svh items-center justify-center bg-slate-50">
       <p className="text-sm text-slate-600">{message}</p>
     </div>
   )
@@ -27,7 +27,7 @@ export function ProtectedRoute({
       <Navigate
         to="/login"
         replace
-        state={{ from: location.pathname + location.search }}
+        state={{ from: location.pathname + location.search + location.hash }}
       />
     )
   }

@@ -1,15 +1,32 @@
-import { createClient } from '@supabase/supabase-js';
-function readRequiredEnv(name) {
-    const raw = import.meta.env[name];
-    if (typeof raw !== 'string' || raw.trim().length === 0) {
-        throw new Error(`Variável de ambiente obrigatória ausente ou inválida: ${name}. Defina-a em .env na raiz do projeto.`);
+import { createClient } from '@supabase/supabase-js'
+
+export function readSupabaseConfig() {
+  const url = import.meta.env.VITE_SUPABASE_URL?.trim()
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
+
+  if (!url || !key) {
+    return {
+      ok: false,
+      error:
+        'Variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY ausentes. No GitHub Pages, configure-as em Settings → Secrets and variables → Actions.',
     }
-    return raw.trim();
+  }
+
+  return { ok: true, url, key }
 }
-const supabaseUrl = readRequiredEnv('VITE_SUPABASE_URL');
-const supabaseAnonKey = readRequiredEnv('VITE_SUPABASE_ANON_KEY');
-/**
- * Cliente Supabase singleton para uso no browser (Vite).
- * Tipado com {@link Database}; atualize `src/types/database.ts` quando o schema existir.
- */
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+const config = readSupabaseConfig()
+
+export const supabaseConfigError = config.ok ? null : config.error
+
+/** @type {import('@supabase/supabase-js').SupabaseClient | null} */
+export const supabase = config.ok
+  ? createClient(config.url, config.key)
+  : null
+
+export function requireSupabase() {
+  if (!supabase) {
+    throw new Error(supabaseConfigError ?? 'Supabase não configurado.')
+  }
+  return supabase
+}

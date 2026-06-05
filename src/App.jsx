@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { AppConfigError } from './components/AppConfigError'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AuthProvider } from './contexts/AuthProvider'
 import { MainLayout } from './layouts/MainLayout'
@@ -17,10 +18,16 @@ import { ParametrosPage } from './pages/ParametrosPage'
 import { PedidoPage } from './pages/PedidoPage'
 import { PedidosPage } from './pages/PedidosPage'
 import { SimuladorPage } from './pages/SimuladorPage'
+import { supabaseConfigError } from './services/supabase'
 
-const routerBasename = import.meta.env.BASE_URL.replace(/\/$/, '') || undefined
+const routerBasename =
+  import.meta.env.BASE_URL.replace(/\/$/, '') || undefined
 
 export default function App() {
+  if (supabaseConfigError) {
+    return <AppConfigError message={supabaseConfigError} />
+  }
+
   return (
     <BrowserRouter basename={routerBasename}>
       <AuthProvider>
@@ -69,8 +76,9 @@ export default function App() {
               />
               <Route path="moedas" element={<GestaoMoedasPage />} />
             </Route>
-            <Route path="*" element={<Navigate to="dashboard" replace />} />
           </Route>
+
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

@@ -36,6 +36,15 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
+      - name: Verify build output
+        run: |
+          test -f dist/index.html
+          test -d dist/assets
+          if grep -q '/src/main.jsx' dist/index.html; then
+            echo 'Build inválido: index.html ainda aponta para /src/main.jsx'
+            exit 1
+          fi
+
       - name: SPA fallback (rotas do React Router)
         run: cp dist/index.html dist/404.html
 
