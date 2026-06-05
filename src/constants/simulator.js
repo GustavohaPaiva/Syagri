@@ -1,0 +1,59 @@
+export const STATES = [
+  { value: 'MG', label: 'Minas Gerais' },
+  { value: 'SP', label: 'São Paulo' },
+]
+
+export const QUARTERS = [
+  { value: 'Q1', label: 'Q1 — Jan/Fev/Mar' },
+  { value: 'Q2', label: 'Q2 — Abr/Mai/Jun' },
+  { value: 'Q3', label: 'Q3 — Jul/Ago/Set' },
+  { value: 'Q4', label: 'Q4 — Out/Nov/Dez' },
+]
+
+export const FREIGHT_TYPES = [
+  { value: 'CIF', label: 'CIF — Posto Fazenda' },
+  { value: 'FOB', label: 'FOB — Cliente Retira' },
+]
+
+export const CULTURES = [
+  'Algodão',
+  'Arroz',
+  'Café',
+  'Feijão',
+  'Milho',
+  'Soja',
+  'Sorgo',
+  'Trigo',
+]
+
+export const CITIES_BY_STATE = {
+  MG: [
+    'Araxá',
+    'Belo Horizonte',
+    'Juiz de Fora',
+    'Lavras',
+    'Montes Claros',
+    'Patos de Minas',
+    'Patrocínio',
+    'Sete Lagoas',
+    'Uberaba',
+    'Uberlândia',
+  ],
+  SP: [
+    'Araraquara',
+    'Bauru',
+    'Campinas',
+    'Marília',
+    'Piracicaba',
+    'Presidente Prudente',
+    'Ribeirão Preto',
+    'Sorocaba',
+    'São José do Rio Preto',
+    'São Paulo',
+  ],
+}
+
+export function getCitiesForState(estado) {
+  if (!estado) return []
+  return CITIES_BY_STATE[estado] ?? []
+}

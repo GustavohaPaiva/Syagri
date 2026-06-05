@@ -1,0 +1,158 @@
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { supabase } from '../services/supabase'
+import { AuthContext } from './auth-context'
+
+async function fetchProfile(userId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, nome, role')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) return null
+
+  return {
+    id: data.id,
+    nome: data.nome,
+    role: data.role,
+  }
+}
+
+export function AuthProvider({ children }) {
+  const [session, setSession] = useState(null)
+  const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
+  const [initializing, setInitializing] = useState(true)
+  const [profileLoading, setProfileLoading] = useState(false)
+
+  const clearAuth = useCallback(() => {
+    setSession(null)
+    setUser(null)
+    setProfile(null)
+    setProfileLoading(false)
+  }, [])
+
+  const applySession = useCallback(
+    async (nextSession ) => {
+      if (!nextSession?.user) {
+        clearAuth()
+        return
+      }
+
+      setSession(nextSession)
+      setUser(nextSession.user)
+      setProfileLoading(true)
+
+      try {
+        const p = await fetchProfile(nextSession.user.id)
+        setProfile(p)
+      } catch {
+        setProfile(null)
+      } finally {
+        setProfileLoading(false)
+      }
+    },
+    [clearAuth],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const {
+          data: { session: initialSession },
+          error,
+        } = await supabase.auth.getSession()
+
+        if (cancelled) return
+
+        if (error) {
+          clearAuth()
+          return
+        }
+
+        await applySession(initialSession)
+      } catch {
+        if (!cancelled) clearAuth()
+      } finally {
+        if (!cancelled) setInitializing(false)
+      }
+    })()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (cancelled) return
+
+      if (event === 'SIGNED_OUT' || !nextSession) {
+        clearAuth()
+        return
+      }
+
+      void applySession(nextSession).catch(() => {
+        if (!cancelled) clearAuth()
+      })
+    })
+
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
+  }, [applySession, clearAuth])
+
+  const signOut = useCallback(async () => {
+    clearAuth()
+    try {
+      await supabase.auth.signOut()
+    } catch {
+      // Estado local já foi limpo; SIGNED_OUT pode não disparar em falha de rede.
+    }
+  }, [clearAuth])
+
+  const refreshProfile = useCallback(async () => {
+    const uid = user?.id
+    if (!uid) {
+      setProfile(null)
+      setProfileLoading(false)
+      return
+    }
+    setProfileLoading(true)
+    try {
+      const next = await fetchProfile(uid)
+      setProfile(next)
+    } catch {
+      setProfile(null)
+    } finally {
+      setProfileLoading(false)
+    }
+  }, [user?.id])
+
+  const value = useMemo(
+    () => ({
+      user,
+      session,
+      profile,
+      role: profile?.role ?? null,
+      initializing,
+      profileLoading,
+      clearAuth,
+      signOut,
+      refreshProfile,
+    }),
+    [
+      user,
+      session,
+      profile,
+      initializing,
+      profileLoading,
+      clearAuth,
+      signOut,
+      refreshProfile,
+    ],
+  )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
