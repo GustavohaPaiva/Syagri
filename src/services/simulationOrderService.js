@@ -1,5 +1,65 @@
 import { roundMoney } from '../utils/roundMoney';
+import { notifyConsultorSimulationDecision } from './notificationService';
 import { supabase } from './supabase';
+
+async function resolveClientId(input) {
+    const nome = input.clientName.trim();
+    const cnpj = input.clientCnpjCpf.trim();
+    if (!nome || !cnpj) {
+        return { ok: false, error: 'Informe nome e CPF/CNPJ do cliente.' };
+    }
+    let clientId = input.clientId ?? null;
+    if (!clientId) {
+        const { data: clientRow, error: clientError } = await supabase
+            .from('clients')
+            .insert({
+            nome,
+            cnpj_cpf: cnpj,
+            uf: input.estado ?? null,
+        })
+            .select('id')
+            .single();
+        if (clientError || !clientRow) {
+            return {
+                ok: false,
+                error: clientError?.message ?? 'Não foi possível salvar o cliente.',
+            };
+        }
+        clientId = clientRow.id;
+    }
+    return { ok: true, clientId };
+}
+
+function buildSimulationFields(input, status) {
+    return {
+        total_bruto: roundMoney(input.totalValor),
+        total_proposta: roundMoney(input.totalProposta),
+        status,
+        tipo_frete: input.tipoFrete ?? null,
+        origem_frete: input.origemFrete?.trim() || null,
+        destino_frete: input.destinoFrete?.trim() || null,
+        data_pagamento: input.dataPagamento || null,
+        quarter: input.quarter ?? null,
+    };
+}
+
+async function insertSimulationItems(simulationId, lines, statusLinha) {
+    const itemsPayload = lines.map((line) => ({
+        simulation_id: simulationId,
+        product_id: line.productId,
+        volume: line.volume,
+        preco_unitario: roundMoney(line.precoUnitario),
+        proposta: roundMoney(line.proposta),
+        status_linha: statusLinha,
+    }));
+    const { error: itemsError } = await supabase
+        .from('simulation_items')
+        .insert(itemsPayload);
+    if (itemsError) {
+        return { ok: false, error: itemsError.message };
+    }
+    return { ok: true };
+}
 function parseBundle(data) {
     if (!data || typeof data !== 'object')
         return null;
@@ -123,50 +183,18 @@ export async function persistApprovedSimulation(input) {
     if (sessionError || !session?.user) {
         return { ok: false, error: 'Sessão expirada. Faça login novamente.' };
     }
-    const nome = input.clientName.trim();
-    const cnpj = input.clientCnpjCpf.trim();
-    if (!nome || !cnpj) {
-        return { ok: false, error: 'Informe nome e CPF/CNPJ do cliente.' };
-    }
     if (input.lines.length === 0) {
         return { ok: false, error: 'Inclua ao menos um produto na simulação.' };
     }
-
-    let clientId = input.clientId ?? null;
-    if (!clientId) {
-        const { data: clientRow, error: clientError } = await supabase
-            .from('clients')
-            .insert({
-            nome,
-            cnpj_cpf: cnpj,
-            uf: input.estado ?? null,
-        })
-            .select('id')
-            .single();
-        if (clientError || !clientRow) {
-            return {
-                ok: false,
-                error: clientError?.message ?? 'Não foi possível salvar o cliente.',
-            };
-        }
-        clientId = clientRow.id;
-    }
-    const clientRow = { id: clientId };
-    const totalBruto = roundMoney(input.totalValor);
-    const totalProposta = roundMoney(input.totalProposta);
+    const clientResult = await resolveClientId(input);
+    if (!clientResult.ok)
+        return clientResult;
     const { data: simRow, error: simError } = await supabase
         .from('simulations')
         .insert({
         user_id: session.user.id,
-        client_id: clientRow.id,
-        total_bruto: totalBruto,
-        total_proposta: totalProposta,
-        status: 'approved',
-        tipo_frete: input.tipoFrete ?? null,
-        origem_frete: input.origemFrete?.trim() || null,
-        destino_frete: input.destinoFrete?.trim() || null,
-        data_pagamento: input.dataPagamento || null,
-        quarter: input.quarter ?? null,
+        client_id: clientResult.clientId,
+        ...buildSimulationFields(input, 'approved'),
     })
         .select('id')
         .single();
@@ -176,32 +204,90 @@ export async function persistApprovedSimulation(input) {
             error: simError?.message ?? 'Não foi possível salvar a simulação.',
         };
     }
-    const itemsPayload = input.lines.map((line) => ({
-        simulation_id: simRow.id,
-        product_id: line.productId,
-        volume: line.volume,
-        preco_unitario: roundMoney(line.precoUnitario),
-        proposta: roundMoney(line.proposta),
-        status_linha: 'approved',
-    }));
-    const { error: itemsError } = await supabase
-        .from('simulation_items')
-        .insert(itemsPayload);
-    if (itemsError) {
-        return {
-            ok: false,
-            error: itemsError.message,
-        };
-    }
+    const itemsResult = await insertSimulationItems(simRow.id, input.lines, 'approved');
+    if (!itemsResult.ok)
+        return itemsResult;
     return { ok: true, simulationId: simRow.id };
 }
-export async function updateSimulationStatus(simulationId, status) {
+
+export async function savePendingSimulation(input) {
+    const { data: { session }, error: sessionError, } = await supabase.auth.getSession();
+    if (sessionError || !session?.user) {
+        return { ok: false, error: 'Sessão expirada. Faça login novamente.' };
+    }
+    if (input.lines.length === 0) {
+        return { ok: false, error: 'Inclua ao menos um produto na simulação.' };
+    }
+    const clientResult = await resolveClientId(input);
+    if (!clientResult.ok)
+        return clientResult;
+    const simulationFields = {
+        client_id: clientResult.clientId,
+        ...buildSimulationFields(input, 'pending'),
+    };
+    let simulationId = input.simulationId ?? null;
+    if (simulationId) {
+        const { error: simError } = await supabase
+            .from('simulations')
+            .update(simulationFields)
+            .eq('id', simulationId)
+            .eq('user_id', session.user.id);
+        if (simError) {
+            return { ok: false, error: simError.message };
+        }
+        const { error: deleteError } = await supabase
+            .from('simulation_items')
+            .delete()
+            .eq('simulation_id', simulationId);
+        if (deleteError) {
+            return { ok: false, error: deleteError.message };
+        }
+    }
+    else {
+        const { data: simRow, error: simError } = await supabase
+            .from('simulations')
+            .insert({
+            user_id: session.user.id,
+            ...simulationFields,
+        })
+            .select('id')
+            .single();
+        if (simError || !simRow) {
+            return {
+                ok: false,
+                error: simError?.message ?? 'Não foi possível salvar a simulação.',
+            };
+        }
+        simulationId = simRow.id;
+    }
+    const itemsResult = await insertSimulationItems(simulationId, input.lines, 'pending');
+    if (!itemsResult.ok)
+        return itemsResult;
+    return { ok: true, simulationId };
+}
+
+export async function updateSimulationStatus(simulationId, status, options = {}) {
     const { error } = await supabase
         .from('simulations')
         .update({ status })
         .eq('id', simulationId);
     if (error)
         return { ok: false, error: error.message };
+    if (options.notifyConsultor && (status === 'approved' || status === 'rejected')) {
+        const type = status === 'approved' ? 'simulation_approved' : 'simulation_rejected';
+        const clientLabel = options.clientName?.trim() || 'Cliente';
+        const title = status === 'approved'
+            ? `Simulação aprovada — ${clientLabel}`
+            : `Simulação reprovada — ${clientLabel}`;
+        const notifyResult = await notifyConsultorSimulationDecision({
+            simulationId,
+            type,
+            title,
+            body: options.body ?? null,
+        });
+        if (!notifyResult.ok)
+            return notifyResult;
+    }
     return { ok: true };
 }
 export async function fetchSimulationsList(params) {
@@ -254,6 +340,33 @@ export async function fetchSimulationsList(params) {
     }
     return { ok: true, rows, consultorNomeById };
 }
+
+export async function fetchGestorDashboardStats() {
+    const [pendingRes, approvedRes, clientsRes, consultoresRes] = await Promise.all([
+        supabase.from('simulations').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('simulations').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+        supabase.from('clients').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'consultor'),
+    ]);
+    if (pendingRes.error)
+        return { ok: false, error: pendingRes.error.message };
+    if (approvedRes.error)
+        return { ok: false, error: approvedRes.error.message };
+    if (clientsRes.error)
+        return { ok: false, error: clientsRes.error.message };
+    if (consultoresRes.error)
+        return { ok: false, error: consultoresRes.error.message };
+    return {
+        ok: true,
+        stats: {
+            pendingCount: pendingRes.count ?? 0,
+            approvedCount: approvedRes.count ?? 0,
+            clientsCount: clientsRes.count ?? 0,
+            consultoresCount: consultoresRes.count ?? 0,
+        },
+    };
+}
+
 export async function updateClientDeliveryFields(input) {
     const { error } = await supabase
         .from('clients')

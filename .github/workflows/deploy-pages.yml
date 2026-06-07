@@ -64,9 +64,12 @@ jobs:
           publish_branch: gh-pages
           force_orphan: true
 
+  # Opcional: só funciona se Settings → Pages → Source = "GitHub Actions".
+  # A branch gh-pages (passo peaceiris acima) já publica o site sozinha.
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: https://gustavohapaiva.github.io/Syagri/
@@ -74,3 +77,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true

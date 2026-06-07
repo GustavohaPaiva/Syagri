@@ -26,7 +26,11 @@ export function DataTable({
                 key={col.key}
                 className={[
                   'px-4 py-3',
-                  col.align === 'right' ? 'text-right' : '',
+                  col.align === 'right'
+                    ? 'text-right'
+                    : col.align === 'center'
+                      ? 'text-center'
+                      : '',
                   col.headerClassName ?? '',
                 ]
                   .filter(Boolean)
@@ -64,7 +68,11 @@ export function DataTable({
                     key={col.key}
                     className={[
                       'px-4 py-3 text-slate-600',
-                      col.align === 'right' ? 'text-right' : '',
+                      col.align === 'right'
+                        ? 'text-right'
+                        : col.align === 'center'
+                          ? 'text-center'
+                          : '',
                       col.cellClassName ?? '',
                     ]
                       .filter(Boolean)

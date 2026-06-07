@@ -7,13 +7,16 @@ import { AdminPage } from './pages/AdminPage'
 import { ClienteDetalhePage } from './pages/ClienteDetalhePage'
 import { ConsultorDetalhePage } from './pages/ConsultorDetalhePage'
 import { DashboardPage } from './pages/DashboardPage'
+import { FretePage } from './pages/FretePage'
 import { GerenciarClientes } from './pages/GerenciarClientes'
 import { GerenciarConsultores } from './pages/GerenciarConsultores'
 import { GestaoMoedasPage } from './pages/GestaoMoedasPage'
+import { GestorPage } from './pages/GestorPage'
 import { ConstrutorMapeamento } from './pages/ConstrutorMapeamento'
 import { ImportacaoProdutos } from './pages/ImportacaoProdutos'
 import { ListagemSimulacoes } from './pages/ListagemSimulacoes'
 import { Login } from './pages/Login'
+import { NotificacoesPage } from './pages/NotificacoesPage'
 import { ParametrosPage } from './pages/ParametrosPage'
 import { PedidoPage } from './pages/PedidoPage'
 import { PedidosPage } from './pages/PedidosPage'
@@ -47,9 +50,19 @@ export default function App() {
             <Route path="simulador" element={<SimuladorPage />} />
             <Route path="pedido/:simulationId" element={<PedidoPage />} />
             <Route path="simulacoes" element={<ListagemSimulacoes />} />
+            <Route path="notificacoes" element={<NotificacoesPage />} />
+            <Route path="frete" element={<FretePage />} />
             <Route path="clientes" element={<GerenciarClientes />} />
             <Route path="clientes/:id" element={<ClienteDetalhePage />} />
             <Route path="pedidos" element={<PedidosPage />} />
+            <Route
+              path="gestor"
+              element={
+                <ProtectedRoute roles={['gestor']}>
+                  <GestorPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="parametros"
               element={

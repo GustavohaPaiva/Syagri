@@ -25,8 +25,10 @@ import { useSimulation } from '../hooks/useSimulation'
 import {
   fetchSimulationOrderBundle,
   persistApprovedSimulation,
+  savePendingSimulation,
   searchClients,
 } from '../services/simulationOrderService'
+import { notifyGestoresSimulationPending } from '../services/notificationService'
 import { formatBRL } from '../utils/money'
 
 export function Simulador() {
@@ -36,7 +38,9 @@ export function Simulador() {
   const sim = useSimulation({ role })
   const navigate = useNavigate()
   const [persisting, setPersisting] = useState(false)
+  const [notifying, setNotifying] = useState(false)
   const [persistError, setPersistError] = useState(null)
+  const [notifyError, setNotifyError] = useState(null)
   const [launchError, setLaunchError] = useState(null)
   const [clientModalOpen, setClientModalOpen] = useState(false)
   const [convertAfterClientSave, setConvertAfterClientSave] = useState(false)
@@ -132,6 +136,77 @@ export function Simulador() {
     }
 
     await persistAndNavigate()
+  }
+
+  function buildSimulationPayload() {
+    return {
+      simulationId,
+      clientId: sim.clientId,
+      clientName: sim.clientName,
+      clientCnpjCpf: sim.clientCnpjCpf,
+      estado: sim.estado,
+      tipoFrete: sim.tipoFrete,
+      origemFrete: sim.origemFrete,
+      destinoFrete: sim.destinoFrete,
+      dataPagamento: sim.dataPagamento || null,
+      quarter: sim.quarter,
+      lines: sim.simulationLines.map((l) => ({
+        productId: l.productId,
+        volume: l.volume,
+        precoUnitario: l.precoUnitario,
+        proposta: l.proposta,
+      })),
+      totalValor: sim.totalValor,
+      totalProposta: sim.totalProposta,
+    }
+  }
+
+  async function handleNotifyGestor() {
+    setNotifyError(null)
+    setLaunchError(null)
+
+    if (sim.isGestor || sim.remotePendingLock || sim.globalStatus !== 'Pendente') {
+      return
+    }
+
+    if (!sim.clientName.trim() || !sim.clientCnpjCpf.trim()) {
+      setNotifyError('Informe nome e CPF/CNPJ do cliente antes de notificar o gestor.')
+      return
+    }
+
+    setNotifying(true)
+    try {
+      const saveResult = await savePendingSimulation(buildSimulationPayload())
+      if (!saveResult.ok) {
+        setNotifyError(saveResult.error)
+        return
+      }
+
+      const notifyResult = await notifyGestoresSimulationPending({
+        simulationId: saveResult.simulationId,
+        title: `Aprovação solicitada — ${sim.clientName.trim()}`,
+        body: `Proposta de ${formatBRL(sim.totalProposta)} abaixo de 97% do valor bruto.`,
+      })
+
+      if (!notifyResult.ok) {
+        setNotifyError(notifyResult.error)
+        return
+      }
+
+      sim.lockAsPending()
+      sim.showActionBanner(
+        'Solicitação enviada: o gestor será notificado sobre esta simulação pendente de aprovação.',
+      )
+
+      if (!simulationId) {
+        navigate(
+          `/simulador?simulationId=${encodeURIComponent(saveResult.simulationId)}`,
+          { replace: true },
+        )
+      }
+    } finally {
+      setNotifying(false)
+    }
   }
 
   const cityOptions = getCitiesForState(sim.estado).map((c) => ({
@@ -373,7 +448,8 @@ export function Simulador() {
                     type="button"
                     variant="secondary"
                     className="w-full"
-                    onClick={sim.notifyGestor}
+                    loading={notifying}
+                    onClick={() => void handleNotifyGestor()}
                   >
                     Notificar gestor
                   </Button>
@@ -392,6 +468,9 @@ export function Simulador() {
 
             {launchError ? (
               <AlertMessage className="mt-4">{launchError}</AlertMessage>
+            ) : null}
+            {notifyError ? (
+              <AlertMessage className="mt-4">{notifyError}</AlertMessage>
             ) : null}
             {persistError ? (
               <AlertMessage className="mt-4">{persistError}</AlertMessage>

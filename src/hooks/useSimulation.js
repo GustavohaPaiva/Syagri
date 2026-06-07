@@ -269,13 +269,13 @@ export function useSimulation(options = {}) {
 
   const dismissActionBanner = useCallback(() => setActionBanner(null), [])
 
-  const notifyGestor = useCallback(() => {
-    if (isGestor || remotePendingLock || globalStatus !== 'Pendente') return
-    setActionBanner(
-      'Solicitação enviada: o gestor será notificado sobre esta simulação pendente de aprovação.',
-    )
+  const lockAsPending = useCallback(() => {
     setRemotePendingLock(true)
-  }, [globalStatus, isGestor, remotePendingLock])
+  }, [])
+
+  const showActionBanner = useCallback((message) => {
+    setActionBanner(message)
+  }, [])
 
   const getLaunchBlockReason = useCallback(() => {
     if (lines.length === 0) return 'Inclua ao menos um produto.'
@@ -297,6 +297,11 @@ export function useSimulation(options = {}) {
       setClientNameState(bundle.client.nome)
       setClientCnpjCpfState(bundle.client.cnpj_cpf)
       setEstadoState(bundle.client.uf || null)
+      setDataPagamentoState(bundle.simulation.data_pagamento ?? '')
+      setTipoFreteState(bundle.simulation.tipo_frete ?? null)
+      setOrigemFreteState(bundle.simulation.origem_frete ?? '')
+      setDestinoFreteState(bundle.simulation.destino_frete ?? '')
+      setQuarterState(bundle.simulation.quarter ?? null)
       setActionBanner(null)
       setLines(
         bundle.items
@@ -370,7 +375,8 @@ export function useSimulation(options = {}) {
     setLineCultura,
     setLineVolume,
     setLineProposta,
-    notifyGestor,
+    lockAsPending,
+    showActionBanner,
     getLaunchBlockReason,
     actionBanner,
     dismissActionBanner,

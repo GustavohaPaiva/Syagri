@@ -1,17 +1,18 @@
 import { useCallback, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import {
+  ConsultorDetailStats,
+  ConsultorInfoPanel,
+  ConsultorProfileHero,
+} from '../components/consultores/ConsultorDetailVisuals'
 import { ModalEditarConsultor } from '../components/consultores/ModalEditarConsultor'
 import { ModalTrocarCredenciais } from '../components/consultores/ModalTrocarCredenciais'
 import { AlertMessage } from '../components/ui/AlertMessage'
 import { Button } from '../components/ui/Button'
-import { Card } from '../components/ui/Card'
 import { EmptyState } from '../components/ui/EmptyState'
-import { FormSection } from '../components/ui/FormSection'
 import { PageBackLink } from '../components/ui/PageBackLink'
-import { PageHeader } from '../components/ui/PageHeader'
 import { useAbortableAsync } from '../hooks/useAbortableAsync'
 import { supabase } from '../services/supabase'
-import { formatShortDate } from '../utils/formatShortDate'
 import { parseSyagriLocalFromEmail } from '../utils/syagriEmail'
 
 export function ConsultorDetalhePage() {
@@ -88,7 +89,7 @@ export function ConsultorDetalhePage() {
 
   if (!id) {
     return (
-      <div className="w-full">
+      <div className="w-full min-w-0 space-y-4">
         <PageBackLink to="/admin/consultores">Voltar para consultores</PageBackLink>
         <AlertMessage>Consultor não informado.</AlertMessage>
       </div>
@@ -104,99 +105,48 @@ export function ConsultorDetalhePage() {
       : 0
 
   return (
-    <div className="w-full">
+    <div className="w-full min-w-0 space-y-4 sm:space-y-6">
       <PageBackLink to="/admin/consultores">Voltar para consultores</PageBackLink>
 
       {loading ? (
-        <EmptyState title="Carregando consultor…" />
+        <EmptyState title="Carregando consultor…" description="Aguarde um instante." />
       ) : error ? (
         <AlertMessage>{error}</AlertMessage>
       ) : profile && metric ? (
         <>
-          <PageHeader
-            title={profile.nome}
-            description="Detalhes, desempenho e gestão de acesso do consultor."
-            actions={
-              <>
-                <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
-                  Editar nome
-                </Button>
-                <Button type="button" onClick={() => setCredOpen(true)}>
-                  Trocar credenciais
-                </Button>
-              </>
-            }
-            className="mb-6"
-          />
+          <ConsultorProfileHero nome={profile.nome} email={email} usuario={usuario} />
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            <Card className="rounded-3xl p-6 lg:col-span-2">
-              <FormSection title="Desempenho">
-                <dl className="grid gap-4 sm:grid-cols-3">
-                  <div className="rounded-2xl bg-slate-50 px-4 py-4">
-                    <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                      Simulações
-                    </dt>
-                    <dd className="finance-text mt-1 text-3xl font-semibold text-slate-900">
-                      {metric.total_simulacoes}
-                    </dd>
-                  </div>
-                  <div className="rounded-2xl bg-slate-50 px-4 py-4">
-                    <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                      Vendas
-                    </dt>
-                    <dd className="finance-text mt-1 text-3xl font-semibold text-slate-900">
-                      {metric.total_vendas}
-                    </dd>
-                  </div>
-                  <div className="rounded-2xl bg-emerald-50 px-4 py-4 ring-1 ring-emerald-100">
-                    <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">
-                      Conversão
-                    </dt>
-                    <dd className="finance-text mt-1 text-3xl font-semibold text-emerald-900">
-                      {conversionRate}%
-                    </dd>
-                  </div>
-                </dl>
-              </FormSection>
-            </Card>
-
-            <Card className="rounded-3xl p-6">
-              <FormSection title="Cadastro e acesso">
-                <dl className="flex flex-col gap-4 text-sm">
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                      Cadastro
-                    </dt>
-                    <dd className="mt-1 font-medium text-slate-900">
-                      {formatShortDate(profile.created_at)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                      Usuário
-                    </dt>
-                    <dd className="mt-1 font-medium text-slate-900">
-                      {usuario ? `${usuario}@syagri.com.br` : '—'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                      Perfil
-                    </dt>
-                    <dd className="mt-1 font-medium capitalize text-slate-900">
-                      {profile.role}
-                    </dd>
-                  </div>
-                </dl>
-              </FormSection>
-            </Card>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center lg:justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full sm:w-auto"
+              onClick={() => setEditOpen(true)}
+            >
+              Editar nome
+            </Button>
+            <Button
+              type="button"
+              className="w-full sm:w-auto"
+              onClick={() => setCredOpen(true)}
+            >
+              Trocar credenciais
+            </Button>
           </div>
 
-          <div className="mt-6">
+          <ConsultorDetailStats
+            metric={metric}
+            conversionRate={conversionRate}
+            loading={loading}
+          />
+
+          <ConsultorInfoPanel profile={profile} usuario={usuario} />
+
+          <div className="flex justify-center sm:justify-start">
             <Button
               type="button"
               variant="ghost"
+              className="w-full sm:w-auto"
               onClick={() => navigate('/admin/consultores')}
             >
               Ver todos os consultores

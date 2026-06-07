@@ -79,9 +79,12 @@ export function ListagemSimulacoes() {
     navigate(`/simulador?simulationId=${encodeURIComponent(simulationId)}`)
   }
 
-  async function handleApprove(id) {
+  async function handleApprove(id, clientName) {
     setPendingAction({ id, type: 'approve' })
-    const r = await updateSimulationStatus(id, 'approved')
+    const r = await updateSimulationStatus(id, 'approved', {
+      notifyConsultor: true,
+      clientName,
+    })
     setPendingAction(null)
     if (!r.ok) {
       setError(r.error)
@@ -90,9 +93,12 @@ export function ListagemSimulacoes() {
     reload()
   }
 
-  async function handleReject(id) {
+  async function handleReject(id, clientName) {
     setPendingAction({ id, type: 'reject' })
-    const r = await updateSimulationStatus(id, 'rejected')
+    const r = await updateSimulationStatus(id, 'rejected', {
+      notifyConsultor: true,
+      clientName,
+    })
     setPendingAction(null)
     if (!r.ok) {
       setError(r.error)
@@ -189,8 +195,8 @@ export function ListagemSimulacoes() {
               pendingAction={pendingAction}
               onContinueEdit={openSimulador}
               onViewDetails={openSimulador}
-              onApprove={(id) => void handleApprove(id)}
-              onReject={(id) => void handleReject(id)}
+              onApprove={(id) => void handleApprove(id, row.client_nome)}
+              onReject={(id) => void handleReject(id, row.client_nome)}
             />
           ))}
         </div>

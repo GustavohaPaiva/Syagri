@@ -3,17 +3,22 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { SidebarUserMenu } from '../components/layout/SidebarUserMenu'
 import { ProfileModal } from '../components/layout/ProfileModal'
 import {
+  IconBell,
   IconChevronsLeft,
   IconClipboardList,
   IconLayoutDashboard,
   IconLeaf,
   IconPackage,
   IconPanelLeft,
+  IconShield,
   IconSliders,
+  IconTruck,
   IconUser,
   IconUsers,
 } from '../components/icons'
 import { useAuth } from '../hooks/useAuth'
+import { useAbortableAsync } from '../hooks/useAbortableAsync'
+import { fetchUnreadNotificationCount } from '../services/notificationService'
 import { supabase } from '../services/supabase'
 
 const COLLAPSE_STORAGE_KEY = 'syagri:sidebar-collapsed'
@@ -60,11 +65,17 @@ function CloseIcon() {
 }
 
 function navItemsForRole(role) {
+  const shared = [
+    { to: '/notificacoes', label: 'Notificações', icon: IconBell },
+    { to: '/frete', label: 'Fretes', icon: IconTruck },
+  ]
+
   if (role === 'gestor') {
     return [
-      { to: '/dashboard', label: 'Dashboard Global', icon: IconLayoutDashboard },
+      { to: '/gestor', label: 'Painel do Gestor', icon: IconShield },
       { to: '/simulacoes', label: 'Todas Simulações', icon: IconClipboardList },
       { to: '/clientes', label: 'Clientes', icon: IconUser },
+      ...shared,
       { to: '/admin/consultores', label: 'Gestão de Consultores', icon: IconUsers },
       { to: '/admin/importacao', label: 'Lançamento de Produtos', icon: IconPackage },
       { to: '/parametros', label: 'Parâmetros', icon: IconSliders },
@@ -74,6 +85,7 @@ function navItemsForRole(role) {
     { to: '/dashboard', label: 'Dashboard', icon: IconLayoutDashboard },
     { to: '/simulacoes', label: 'Minhas Simulações', icon: IconClipboardList },
     { to: '/clientes', label: 'Clientes', icon: IconUser },
+    ...shared,
   ]
 }
 
@@ -98,6 +110,7 @@ export function MainLayout() {
     if (typeof window === 'undefined') return false
     return window.localStorage.getItem(COLLAPSE_STORAGE_KEY) === '1'
   })
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
 
   const pathKey = `${location.pathname}${location.search}`
   const [lastPathKey, setLastPathKey] = useState(pathKey)
@@ -110,6 +123,22 @@ export function MainLayout() {
   useEffect(() => {
     window.localStorage.setItem(COLLAPSE_STORAGE_KEY, collapsed ? '1' : '0')
   }, [collapsed])
+
+  useAbortableAsync(
+    async (_signal, isActive) => {
+      if (!user?.id || !role) {
+        if (!isActive()) return
+        setUnreadNotifications(0)
+        return
+      }
+
+      const result = await fetchUnreadNotificationCount()
+      if (!isActive()) return
+      if (result.ok) setUnreadNotifications(result.count)
+    },
+    [user, role, location.pathname],
+    Boolean(user?.id) && Boolean(role),
+  )
 
   async function handleSignOut() {
     setProfileOpen(false)
@@ -222,7 +251,7 @@ export function MainLayout() {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  end={item.to === '/dashboard'}
+                  end={item.to === '/dashboard' || item.to === '/gestor'}
                   onClick={() => setMobileOpen(false)}
                   title={collapsed ? item.label : undefined}
                   className={({ isActive }) =>
@@ -259,6 +288,16 @@ export function MainLayout() {
                       >
                         {item.label}
                       </span>
+                      {item.to === '/notificacoes' && unreadNotifications > 0 ? (
+                        <span
+                          className={[
+                            'inline-flex min-w-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[0.65rem] font-bold text-white',
+                            collapsed ? 'absolute -right-0.5 -top-0.5 size-2 min-w-0 p-0' : 'ml-auto',
+                          ].join(' ')}
+                        >
+                          {collapsed ? null : unreadNotifications > 9 ? '9+' : unreadNotifications}
+                        </span>
+                      ) : null}
                     </>
                   )}
                 </NavLink>
