@@ -1,33 +1,43 @@
-import { useCallback, useState } from 'react'
-import { FreteTable } from '../components/fretes/FreteTable'
-import { FreteFiltersPanel } from '../components/fretes/FreteFiltersPanel'
-import { FreteStatsBar } from '../components/fretes/FreteVisuals'
-import { ModalFreteForm } from '../components/fretes/ModalFreteForm'
-import { IconTruck } from '../components/icons'
-import { AlertMessage } from '../components/ui/AlertMessage'
-import { Button } from '../components/ui/Button'
-import { PageHeader } from '../components/ui/PageHeader'
-import { useAbortableAsync } from '../hooks/useAbortableAsync'
-import { useAuth } from '../hooks/useAuth'
-import { deleteFrete, fetchFretesList } from '../services/freteService'
-import { formatBRL } from '../utils/money'
+import { useCallback, useState } from "react";
+import { FreteTable } from "../components/fretes/FreteTable";
+import { FreteFiltersPanel } from "../components/fretes/FreteFiltersPanel";
+import { FreteStatsBar } from "../components/fretes/FreteVisuals";
+import { ModalFreteForm } from "../components/fretes/ModalFreteForm";
+import { IconTruck } from "../components/icons";
+import { AlertMessage } from "../components/ui/AlertMessage";
+import { Button } from "../components/ui/Button";
+import { PageHeader } from "../components/ui/PageHeader";
+import { useSyncPageLoading } from "../contexts/PageLoadingContext";
+import { useAbortableAsync } from "../hooks/useAbortableAsync";
+import { useAuth } from "../hooks/useAuth";
+import { deleteFrete, fetchFretesList } from "../services/freteService";
+import { formatBRL } from "../utils/money";
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 50;
 
-function FretePagination({ page, totalPages, rangeStart, rangeEnd, total, loading, onPrev, onNext }) {
-  if (total <= PAGE_SIZE) return null
+function FretePagination({
+  page,
+  totalPages,
+  rangeStart,
+  rangeEnd,
+  total,
+  loading,
+  onPrev,
+  onNext,
+}) {
+  if (total <= PAGE_SIZE) return null;
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm sm:rounded-3xl sm:px-5 sm:py-4 md:flex-row md:items-center md:justify-between">
       <p className="text-center text-sm text-slate-600 md:text-left">
-        Exibindo{' '}
+        Exibindo{" "}
         <span className="font-medium text-slate-900">
           {rangeStart}–{rangeEnd}
-        </span>{' '}
-        de{' '}
+        </span>{" "}
+        de{" "}
         <span className="font-medium text-slate-900">
-          {total.toLocaleString('pt-BR')}
-        </span>{' '}
+          {total.toLocaleString("pt-BR")}
+        </span>{" "}
         rotas
       </p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -56,118 +66,120 @@ function FretePagination({ page, totalPages, rangeStart, rangeEnd, total, loadin
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 export function FretePage() {
-  const { role } = useAuth()
-  const isGestor = role === 'gestor'
+  const { role } = useAuth();
+  const isGestor = role === "gestor";
 
-  const [rows, setRows] = useState([])
-  const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [origemSearch, setOrigemSearch] = useState('')
-  const [destinoSearch, setDestinoSearch] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editingFrete, setEditingFrete] = useState(null)
-  const [deletingId, setDeletingId] = useState(null)
-  const [reloadToken, setReloadToken] = useState(0)
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [origemSearch, setOrigemSearch] = useState("");
+  const [destinoSearch, setDestinoSearch] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingFrete, setEditingFrete] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  useSyncPageLoading(loading);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const reload = useCallback(() => {
-    setReloadToken((n) => n + 1)
-  }, [])
+    setReloadToken((n) => n + 1);
+  }, []);
 
   const loadFretes = useCallback(
     async (isActive) => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
       const result = await fetchFretesList({
         origemSearch,
         destinoSearch,
         page,
         pageSize: PAGE_SIZE,
-      })
+      });
 
-      if (!isActive()) return
+      if (!isActive()) return;
 
-      setLoading(false)
+      setLoading(false);
       if (!result.ok) {
-        setError(result.error)
-        setRows([])
-        setTotal(0)
-        return
+        setError(result.error);
+        setRows([]);
+        setTotal(0);
+        return;
       }
 
-      setRows(result.rows)
-      setTotal(result.total)
+      setRows(result.rows);
+      setTotal(result.total);
     },
     [origemSearch, destinoSearch, page],
-  )
+  );
 
   useAbortableAsync(
     async (_signal, isActive) => {
-      await loadFretes(isActive)
+      await loadFretes(isActive);
     },
     [loadFretes, reloadToken],
-  )
+  );
 
-  const hasFilters = Boolean(origemSearch.trim() || destinoSearch.trim())
+  const hasFilters = Boolean(origemSearch.trim() || destinoSearch.trim());
 
   const emptyMessage =
     total === 0 && !hasFilters
-      ? 'Nenhum frete cadastrado.'
-      : 'Nenhum resultado para a busca.'
+      ? "Nenhum frete cadastrado."
+      : "Nenhum resultado para a busca.";
 
   function resetPage() {
-    setPage(1)
+    setPage(1);
   }
 
   function clearFilters() {
-    setOrigemSearch('')
-    setDestinoSearch('')
-    setPage(1)
+    setOrigemSearch("");
+    setDestinoSearch("");
+    setPage(1);
   }
 
   async function handleDelete(frete) {
     const confirmed = window.confirm(
       `Excluir o frete ${frete.origem} → ${frete.destino} (${formatBRL(frete.valor)})?`,
-    )
-    if (!confirmed) return
+    );
+    if (!confirmed) return;
 
-    setDeletingId(frete.id)
-    const result = await deleteFrete(frete.id)
-    setDeletingId(null)
+    setDeletingId(frete.id);
+    const result = await deleteFrete(frete.id);
+    setDeletingId(null);
 
     if (!result.ok) {
-      setError(result.error)
-      return
+      setError(result.error);
+      return;
     }
 
-    reload()
+    reload();
   }
 
   function openEditModal(frete) {
-    setEditingFrete(frete)
-    setModalOpen(true)
+    setEditingFrete(frete);
+    setModalOpen(true);
   }
 
   function openCreateModal() {
-    setEditingFrete(null)
-    setModalOpen(true)
+    setEditingFrete(null);
+    setModalOpen(true);
   }
 
   function closeModal() {
-    setModalOpen(false)
-    setEditingFrete(null)
+    setModalOpen(false);
+    setEditingFrete(null);
   }
 
-  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
-  const rangeEnd = Math.min(page * PAGE_SIZE, total)
+  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(page * PAGE_SIZE, total);
 
   return (
     <div className="w-full min-w-0 space-y-4 sm:space-y-6">
@@ -187,7 +199,11 @@ export function FretePage() {
           description="Catálogo de rotas e valores para consulta e gestão comercial."
           actions={
             isGestor ? (
-              <Button type="button" className="w-full sm:w-auto" onClick={openCreateModal}>
+              <Button
+                type="button"
+                className="w-full sm:w-auto"
+                onClick={openCreateModal}
+              >
                 Novo frete
               </Button>
             ) : null
@@ -195,16 +211,16 @@ export function FretePage() {
           className="relative mb-0"
         />
 
-        <div className="relative mt-4 flex items-start gap-3 rounded-xl border border-white/80 bg-white/60 p-3 backdrop-blur-sm sm:mt-5 sm:items-center sm:rounded-2xl sm:px-4 sm:py-3">
+        <div className="relative mt-4 flex items-center gap-3 rounded-xl border border-white/80 bg-white/60 p-3 backdrop-blur-sm sm:mt-5 sm:items-center sm:rounded-2xl sm:px-4 sm:py-3">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-white shadow-sm sm:size-9 sm:rounded-xl">
             <IconTruck className="size-3.5 sm:size-4" />
           </span>
           <p className="min-w-0 text-sm leading-relaxed text-slate-700">
             {loading
-              ? 'Carregando catálogo de fretes…'
+              ? "Carregando catálogo de fretes…"
               : hasFilters
-                ? `${total.toLocaleString('pt-BR')} rota(s) encontrada(s) com os filtros aplicados.`
-                : `${total.toLocaleString('pt-BR')} rotas disponíveis no catálogo.`}
+                ? `${total.toLocaleString("pt-BR")} rota(s) encontrada(s) com os filtros aplicados.`
+                : `${total.toLocaleString("pt-BR")} rotas disponíveis no catálogo.`}
           </p>
         </div>
       </div>
@@ -225,12 +241,12 @@ export function FretePage() {
         hasFilters={hasFilters}
         onClear={clearFilters}
         onOrigemChange={(e) => {
-          setOrigemSearch(e.target.value)
-          resetPage()
+          setOrigemSearch(e.target.value);
+          resetPage();
         }}
         onDestinoChange={(e) => {
-          setDestinoSearch(e.target.value)
-          resetPage()
+          setDestinoSearch(e.target.value);
+          resetPage();
         }}
       />
 
@@ -258,7 +274,7 @@ export function FretePage() {
       {isGestor ? (
         <ModalFreteForm
           open={modalOpen}
-          mode={editingFrete ? 'edit' : 'create'}
+          mode={editingFrete ? "edit" : "create"}
           freteId={editingFrete?.id}
           initial={editingFrete ?? undefined}
           onClose={closeModal}
@@ -266,5 +282,5 @@ export function FretePage() {
         />
       ) : null}
     </div>
-  )
+  );
 }

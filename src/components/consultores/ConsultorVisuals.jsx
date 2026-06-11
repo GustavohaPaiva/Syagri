@@ -1,6 +1,6 @@
-import { IconSearch, IconUsers } from '../icons'
-import { Button } from '../ui/Button'
-import { SearchInput } from '../ui/SearchInput'
+import { IconSearch, IconUsers } from "../icons";
+import { Button } from "../ui/Button";
+import { SearchInput } from "../ui/SearchInput";
 
 export function ConsultorFiltersPanel({
   searchQuery,
@@ -50,35 +50,35 @@ export function ConsultorFiltersPanel({
         />
       </div>
     </section>
-  )
+  );
 }
 
 export function ConsultorStatsBar({ total, filtered, loading }) {
   const items = [
     {
-      label: 'Equipe',
-      value: loading ? '—' : String(total),
-      hint: 'Consultores cadastrados',
+      label: "Equipe",
+      value: loading ? "—" : String(total),
+      hint: "Consultores cadastrados",
       icon: IconUsers,
-      accent: 'text-primary-600 bg-primary-50',
+      accent: "text-primary-600 bg-primary-50",
     },
     {
-      label: 'Na listagem',
-      value: loading ? '—' : String(filtered),
-      hint: 'Resultados visíveis',
+      label: "Na listagem",
+      value: loading ? "—" : String(filtered),
+      hint: "Resultados visíveis",
       icon: IconUsers,
-      accent: 'text-violet-700 bg-violet-50',
+      accent: "text-violet-700 bg-violet-50",
     },
-  ]
+  ];
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {items.map((item) => {
-        const Icon = item.icon
+        const Icon = item.icon;
         return (
           <div
             key={item.label}
-            className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-sm sm:rounded-3xl sm:p-4"
+            className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-2 shadow-sm sm:rounded-3xl sm:p-4"
           >
             <div
               className="pointer-events-none absolute -right-4 -top-4 size-20 rounded-full bg-gradient-to-br from-primary-100/40 to-transparent blur-2xl"
@@ -87,9 +87,9 @@ export function ConsultorStatsBar({ total, filtered, loading }) {
             <div className="relative flex items-start gap-2.5 sm:gap-3">
               <span
                 className={[
-                  'flex size-9 shrink-0 items-center justify-center rounded-xl sm:size-10 sm:rounded-2xl',
+                  "flex size-9 shrink-0 items-center justify-center rounded-xl sm:size-10 sm:rounded-2xl",
                   item.accent,
-                ].join(' ')}
+                ].join(" ")}
               >
                 <Icon className="size-3.5 sm:size-4" />
               </span>
@@ -97,22 +97,22 @@ export function ConsultorStatsBar({ total, filtered, loading }) {
                 <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500">
                   {item.label}
                 </p>
-                <p className="mt-0.5 truncate text-lg font-semibold tracking-tight text-slate-900 sm:mt-1 sm:text-xl">
+                <p className="truncate text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">
                   {item.value}
                 </p>
-                <p className="mt-0.5 truncate text-xs text-slate-500">{item.hint}</p>
+                <p className="truncate text-xs text-slate-500">{item.hint}</p>
               </div>
             </div>
           </div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }
 
 function consultorInitial(nome) {
-  const trimmed = (nome ?? '').trim()
-  return trimmed ? trimmed.charAt(0).toUpperCase() : '?'
+  const trimmed = (nome ?? "").trim();
+  return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
 }
 
 export function ConsultorNameBadge({ nome }) {
@@ -126,5 +126,5 @@ export function ConsultorNameBadge({ nome }) {
       </span>
       <span className="truncate font-medium text-slate-900">{nome}</span>
     </span>
-  )
+  );
 }

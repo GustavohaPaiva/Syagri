@@ -1,6 +1,6 @@
-import { IconSearch } from '../icons'
-import { Button } from '../ui/Button'
-import { SearchInput } from '../ui/SearchInput'
+import { IconSearch } from "../icons";
+import { Button } from "../ui/Button";
+import { SearchInput } from "../ui/SearchInput";
 
 export function FreteFiltersPanel({
   origemSearch,
@@ -70,5 +70,5 @@ export function FreteFiltersPanel({
         </div>
       </div>
     </section>
-  )
+  );
 }

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { CATALOG_PRODUCTS } from '../constants/catalogProducts'
 import { CULTURES } from '../constants/simulator'
 import { FLOOR_RATIO } from '../types/simulation'
+import { parseCpfCnpjInput } from '../utils/dataFormatters'
 import { roundMoney } from '../utils/roundMoney'
 
 function clampProposta(proposta, precoUnitario, allowAnyPrice) {
@@ -106,7 +107,7 @@ export function useSimulation(options = {}) {
   const setClientCnpjCpf = useCallback(
     (value) => {
       if (isReadOnly) return
-      setClientCnpjCpfState(value)
+      setClientCnpjCpfState(parseCpfCnpjInput(value))
     },
     [isReadOnly],
   )
@@ -116,7 +117,7 @@ export function useSimulation(options = {}) {
       if (isReadOnly) return
       setClientId(client.id ?? null)
       setClientNameState(client.nome ?? '')
-      setClientCnpjCpfState(client.cnpj_cpf ?? '')
+      setClientCnpjCpfState(parseCpfCnpjInput(client.cnpj_cpf ?? ''))
       if (client.uf) setEstadoState(client.uf)
     },
     [isReadOnly],
@@ -295,7 +296,7 @@ export function useSimulation(options = {}) {
       )
       setClientId(bundle.client.id ?? null)
       setClientNameState(bundle.client.nome)
-      setClientCnpjCpfState(bundle.client.cnpj_cpf)
+      setClientCnpjCpfState(parseCpfCnpjInput(bundle.client.cnpj_cpf ?? ''))
       setEstadoState(bundle.client.uf || null)
       setDataPagamentoState(bundle.simulation.data_pagamento ?? '')
       setTipoFreteState(bundle.simulation.tipo_frete ?? null)

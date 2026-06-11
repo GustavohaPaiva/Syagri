@@ -1,99 +1,253 @@
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
-import { AppConfigError } from './components/AppConfigError'
-import { ProtectedRoute } from './components/ProtectedRoute'
-import { AuthProvider } from './contexts/AuthProvider'
-import { MainLayout } from './layouts/MainLayout'
-import { AdminPage } from './pages/AdminPage'
-import { ClienteDetalhePage } from './pages/ClienteDetalhePage'
-import { ConsultorDetalhePage } from './pages/ConsultorDetalhePage'
-import { DashboardPage } from './pages/DashboardPage'
-import { FretePage } from './pages/FretePage'
-import { GerenciarClientes } from './pages/GerenciarClientes'
-import { GerenciarConsultores } from './pages/GerenciarConsultores'
-import { GestaoMoedasPage } from './pages/GestaoMoedasPage'
-import { GestorPage } from './pages/GestorPage'
-import { ConstrutorMapeamento } from './pages/ConstrutorMapeamento'
-import { ImportacaoProdutos } from './pages/ImportacaoProdutos'
-import { ListagemSimulacoes } from './pages/ListagemSimulacoes'
-import { Login } from './pages/Login'
-import { NotificacoesPage } from './pages/NotificacoesPage'
-import { ParametrosPage } from './pages/ParametrosPage'
-import { PedidoPage } from './pages/PedidoPage'
-import { PedidosPage } from './pages/PedidosPage'
-import { SimuladorPage } from './pages/SimuladorPage'
-import { supabaseConfigError } from './services/supabase'
+import { lazy, Suspense } from "react";
+import {
+  BrowserRouter,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+} from "react-router-dom";
+import { AppConfigError } from "./components/AppConfigError";
+import { RouteFallback } from "./components/layout/RouteFallback";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AlertDialogProvider } from "./contexts/AlertDialogProvider";
+import { AuthProvider } from "./contexts/AuthProvider";
+import { MainLayout } from "./layouts/MainLayout";
+import { Login } from "./pages/Login";
+import { supabaseConfigError } from "./services/supabase";
 
-const routerBasename =
-  import.meta.env.BASE_URL.replace(/\/$/, '') || undefined
+const AdminPage = lazy(() =>
+  import("./pages/AdminPage").then((m) => ({ default: m.AdminPage })),
+);
+const ClienteDetalhePage = lazy(() =>
+  import("./pages/ClienteDetalhePage").then((m) => ({
+    default: m.ClienteDetalhePage,
+  })),
+);
+const ConsultorDetalhePage = lazy(() =>
+  import("./pages/ConsultorDetalhePage").then((m) => ({
+    default: m.ConsultorDetalhePage,
+  })),
+);
+const DashboardPage = lazy(() =>
+  import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
+);
+const FretePage = lazy(() =>
+  import("./pages/FretePage").then((m) => ({ default: m.FretePage })),
+);
+const GerenciarClientes = lazy(() =>
+  import("./pages/GerenciarClientes").then((m) => ({
+    default: m.GerenciarClientes,
+  })),
+);
+const GerenciarConsultores = lazy(() =>
+  import("./pages/GerenciarConsultores").then((m) => ({
+    default: m.GerenciarConsultores,
+  })),
+);
+const ConstrutorMapeamento = lazy(() =>
+  import("./pages/ConstrutorMapeamento").then((m) => ({
+    default: m.ConstrutorMapeamento,
+  })),
+);
+const ImportacaoProdutos = lazy(() =>
+  import("./pages/ImportacaoProdutos").then((m) => ({
+    default: m.ImportacaoProdutos,
+  })),
+);
+const ListagemSimulacoes = lazy(() =>
+  import("./pages/ListagemSimulacoes").then((m) => ({
+    default: m.ListagemSimulacoes,
+  })),
+);
+const NotificacoesPage = lazy(() =>
+  import("./pages/NotificacoesPage").then((m) => ({
+    default: m.NotificacoesPage,
+  })),
+);
+const ParametrosPage = lazy(() =>
+  import("./pages/ParametrosPage").then((m) => ({ default: m.ParametrosPage })),
+);
+const PedidoPage = lazy(() =>
+  import("./pages/PedidoPage").then((m) => ({ default: m.PedidoPage })),
+);
+const PedidosPage = lazy(() =>
+  import("./pages/PedidosPage").then((m) => ({ default: m.PedidosPage })),
+);
+const Simulador = lazy(() =>
+  import("./pages/Simulador").then((m) => ({ default: m.Simulador })),
+);
+
+const routerBasename = import.meta.env.BASE_URL.replace(/\/$/, "") || undefined;
+
+function LazyPage({ children }) {
+  return <Suspense fallback={<RouteFallback />}>{children}</Suspense>;
+}
 
 export default function App() {
   if (supabaseConfigError) {
-    return <AppConfigError message={supabaseConfigError} />
+    return <AppConfigError message={supabaseConfigError} />;
   }
 
   return (
     <BrowserRouter basename={routerBasename}>
       <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+        <AlertDialogProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <MainLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="simulador" element={<SimuladorPage />} />
-            <Route path="pedido/:simulationId" element={<PedidoPage />} />
-            <Route path="simulacoes" element={<ListagemSimulacoes />} />
-            <Route path="notificacoes" element={<NotificacoesPage />} />
-            <Route path="frete" element={<FretePage />} />
-            <Route path="clientes" element={<GerenciarClientes />} />
-            <Route path="clientes/:id" element={<ClienteDetalhePage />} />
-            <Route path="pedidos" element={<PedidosPage />} />
             <Route
-              path="gestor"
+              path="/"
               element={
-                <ProtectedRoute roles={['gestor']}>
-                  <GestorPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="parametros"
-              element={
-                <ProtectedRoute roles={['gestor']}>
-                  <ParametrosPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="admin"
-              element={
-                <ProtectedRoute roles={['gestor']}>
-                  <Outlet />
+                <ProtectedRoute>
+                  <MainLayout />
                 </ProtectedRoute>
               }
             >
-              <Route index element={<AdminPage />} />
-              <Route path="consultores" element={<GerenciarConsultores />} />
-              <Route path="consultores/:id" element={<ConsultorDetalhePage />} />
-              <Route path="importacao" element={<ImportacaoProdutos />} />
               <Route
-                path="importacao/mapeamento"
-                element={<ConstrutorMapeamento />}
+                index
+                element={<Navigate to="dashboard" replace />}
               />
-              <Route path="moedas" element={<GestaoMoedasPage />} />
+              <Route
+                path="dashboard"
+                element={
+                  <LazyPage>
+                    <DashboardPage />
+                  </LazyPage>
+                }
+              />
+              <Route
+                path="simulador"
+                element={
+                  <LazyPage>
+                    <Simulador />
+                  </LazyPage>
+                }
+              />
+              <Route
+                path="pedido/:simulationId"
+                element={
+                  <LazyPage>
+                    <PedidoPage />
+                  </LazyPage>
+                }
+              />
+              <Route
+                path="simulacoes"
+                element={
+                  <LazyPage>
+                    <ListagemSimulacoes />
+                  </LazyPage>
+                }
+              />
+              <Route
+                path="notificacoes"
+                element={
+                  <LazyPage>
+                    <NotificacoesPage />
+                  </LazyPage>
+                }
+              />
+              <Route
+                path="frete"
+                element={
+                  <LazyPage>
+                    <FretePage />
+                  </LazyPage>
+                }
+              />
+              <Route
+                path="clientes"
+                element={
+                  <LazyPage>
+                    <GerenciarClientes />
+                  </LazyPage>
+                }
+              />
+              <Route
+                path="clientes/:id"
+                element={
+                  <LazyPage>
+                    <ClienteDetalhePage />
+                  </LazyPage>
+                }
+              />
+              <Route
+                path="pedidos"
+                element={
+                  <LazyPage>
+                    <PedidosPage />
+                  </LazyPage>
+                }
+              />
+              <Route
+                path="gestor"
+                element={<Navigate to="/dashboard" replace />}
+              />
+              <Route
+                path="parametros"
+                element={
+                  <ProtectedRoute roles={["gestor"]}>
+                    <LazyPage>
+                      <ParametrosPage />
+                    </LazyPage>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin"
+                element={
+                  <ProtectedRoute roles={["gestor"]}>
+                    <Outlet />
+                  </ProtectedRoute>
+                }
+              >
+                <Route
+                  index
+                  element={
+                    <LazyPage>
+                      <AdminPage />
+                    </LazyPage>
+                  }
+                />
+                <Route
+                  path="consultores"
+                  element={
+                    <LazyPage>
+                      <GerenciarConsultores />
+                    </LazyPage>
+                  }
+                />
+                <Route
+                  path="consultores/:id"
+                  element={
+                    <LazyPage>
+                      <ConsultorDetalhePage />
+                    </LazyPage>
+                  }
+                />
+                <Route
+                  path="importacao"
+                  element={
+                    <LazyPage>
+                      <ImportacaoProdutos />
+                    </LazyPage>
+                  }
+                />
+                <Route
+                  path="importacao/mapeamento"
+                  element={
+                    <LazyPage>
+                      <ConstrutorMapeamento />
+                    </LazyPage>
+                  }
+                />
+              </Route>
             </Route>
-          </Route>
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </AlertDialogProvider>
       </AuthProvider>
     </BrowserRouter>
-  )
+  );
 }

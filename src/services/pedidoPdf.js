@@ -6,7 +6,7 @@ import { jsPDF } from 'jspdf';
  */
 export async function downloadPedidoPdfFromElement(element, filename) {
     const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',

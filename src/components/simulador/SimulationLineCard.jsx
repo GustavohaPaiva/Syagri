@@ -1,7 +1,8 @@
-import { EditableNumber } from '../ui/EditableNumber'
-import { Select } from '../ui/Select'
-import { RemoveLineButton } from './RemoveLineButton'
-import { formatBRL } from '../../utils/money'
+import { memo } from "react";
+import { EditableNumber } from "../ui/EditableNumber";
+import { Select } from "../ui/Select";
+import { RemoveLineButton } from "./RemoveLineButton";
+import { formatBRL } from "../../utils/money";
 
 function LineStatusBadge({ row, canOverrideFloor }) {
   if (row.isLineBelowFloor && !canOverrideFloor) {
@@ -9,23 +10,23 @@ function LineStatusBadge({ row, canOverrideFloor }) {
       <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
         &lt; 97%
       </span>
-    )
+    );
   }
   if (row.isLineBelowFloor && canOverrideFloor) {
     return (
       <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
         Especial
       </span>
-    )
+    );
   }
   return (
     <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
       OK
     </span>
-  )
+  );
 }
 
-export function SimulationLineCard({
+export const SimulationLineCard = memo(function SimulationLineCard({
   row,
   cultureOptions,
   productOptions,
@@ -37,16 +38,16 @@ export function SimulationLineCard({
   onPropostaChange,
   onRemove,
 }) {
-  const selectClass = 'h-9 text-xs'
+  const selectClass = "h-9 text-xs";
 
   return (
     <article
       className={[
-        'rounded-xl border bg-white p-3 transition-colors',
+        "rounded-2xl border bg-white p-3 shadow-sm transition-colors",
         row.isLineBelowFloor && !canOverrideFloor
-          ? 'border-amber-200'
-          : 'border-slate-200',
-      ].join(' ')}
+          ? "border-amber-200/90 bg-amber-50/20"
+          : "border-slate-200/90",
+      ].join(" ")}
     >
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
@@ -75,7 +76,7 @@ export function SimulationLineCard({
       <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-slate-100 bg-slate-50/70 p-2">
         <Select
           label="Cultura"
-          value={row.cultura ?? ''}
+          value={row.cultura ?? ""}
           onChange={(e) => onCulturaChange(e.target.value)}
           options={cultureOptions.map((c) => ({ value: c, label: c }))}
           disabled={isReadOnly}
@@ -113,5 +114,5 @@ export function SimulationLineCard({
         Tabela {formatBRL(row.precoUnitario)}
       </p>
     </article>
-  )
-}
+  );
+});

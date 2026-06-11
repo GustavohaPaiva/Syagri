@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { IconPlus } from './icons'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Modal } from './ui/Modal'
@@ -84,7 +84,7 @@ export function ModalGerenciarFornecedores({ open, onClose, onChanged }) {
             />
           </div>
           <Button type="submit" loading={saving} className="shrink-0">
-            <Plus className="size-4" aria-hidden />
+            <IconPlus className="size-4" aria-hidden />
             Adicionar
           </Button>
         </div>

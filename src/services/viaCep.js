@@ -1,8 +1,5 @@
 import { isViaCepError } from '../types/viacep';
-/** Apenas dígitos, máximo 8 */
-export function normalizeCepDigits(raw) {
-    return raw.replace(/\D/g, '').slice(0, 8);
-}
+export { normalizeCepDigits } from '../utils/dataFormatters';
 export async function fetchViaCepAddress(cepDigits) {
     if (cepDigits.length !== 8) {
         return { ok: false, error: 'CEP deve conter 8 dígitos.' };

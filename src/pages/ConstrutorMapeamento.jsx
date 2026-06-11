@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Lock } from 'lucide-react'
+import { IconArrowLeft, IconLock } from '../components/icons'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -170,7 +170,7 @@ export function ConstrutorMapeamento(props = {}) {
             onClick={() => onBack?.()}
             className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-primary-700 hover:text-primary-800"
           >
-            <ArrowLeft className="size-4" aria-hidden />
+            <IconArrowLeft className="size-4" aria-hidden />
             Voltar ao hub de importação
           </button>
         ) : (
@@ -178,7 +178,7 @@ export function ConstrutorMapeamento(props = {}) {
             to="/admin/importacao"
             className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-primary-700 hover:text-primary-800"
           >
-            <ArrowLeft className="size-4" aria-hidden />
+            <IconArrowLeft className="size-4" aria-hidden />
             Voltar ao hub de importação
           </Link>
         )}
@@ -230,7 +230,7 @@ export function ConstrutorMapeamento(props = {}) {
                     </p>
                     <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 shadow-sm">
                       <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-white text-slate-400 ring-1 ring-gray-200">
-                        <Lock className="size-4" aria-hidden />
+                        <IconLock className="size-4" aria-hidden />
                       </span>
                       <div className="min-w-0">
                         <p className="truncate font-mono text-sm font-semibold text-slate-900">

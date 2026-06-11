@@ -2,17 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertMessage } from '../components/ui/AlertMessage'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { FormattedInput } from '../components/ui/FormattedInput'
 import { Input } from '../components/ui/Input'
 import { PageBackLink } from '../components/ui/PageBackLink'
 import { PageHeader } from '../components/ui/PageHeader'
+import { useSyncPageLoading } from '../contexts/PageLoadingContext'
 import { useAbortableAsync } from '../hooks/useAbortableAsync'
-import { downloadPedidoPdfFromElement } from '../services/pedidoPdf'
 import {
   fetchSimulationOrderBundle,
   updateClientDeliveryFields,
   updateSimulationStatus,
 } from '../services/simulationOrderService'
-import { fetchViaCepAddress, normalizeCepDigits } from '../services/viaCep'
+import { fetchViaCepAddress } from '../services/viaCep'
+import { displayCpfCnpj, displayPhone, parseCepInput } from '../utils/dataFormatters'
 import { formatBRL } from '../utils/money'
 import { roundMoney } from '../utils/roundMoney'
 
@@ -27,6 +29,8 @@ export function Pedido({ simulationId }) {
   const [loadState, setLoadState] = useState('idle')
   const [loadError, setLoadError] = useState(null)
   const [bundle, setBundle] = useState(null)
+
+  useSyncPageLoading(loadState === 'loading' || loadState === 'idle')
 
   const [cep, setCep] = useState('')
   const [logradouro, setLogradouro] = useState('')
@@ -61,7 +65,7 @@ export function Pedido({ simulationId }) {
       }
       setBundle(res.data)
       const c = res.data.client
-      setCep(c.cep ?? '')
+      setCep(parseCepInput(c.cep ?? ''))
       setLogradouro(c.logradouro ?? '')
       setBairro(c.bairro ?? '')
       setMunicipio(c.municipio ?? '')
@@ -92,7 +96,7 @@ export function Pedido({ simulationId }) {
 
   useEffect(() => {
     if (formLocked || !isCif) return
-    const digits = normalizeCepDigits(cep)
+    const digits = parseCepInput(cep)
     if (digits.length !== 8) return
 
     const handle = window.setTimeout(() => {
@@ -101,7 +105,7 @@ export function Pedido({ simulationId }) {
     return () => window.clearTimeout(handle)
   }, [cep, formLocked, isCif, lookupCep])
 
-  const cepDigits = normalizeCepDigits(cep)
+  const cepDigits = parseCepInput(cep)
   const displayedCepLookupError =
     isCif && cepDigits.length === 8 ? cepLookupError : null
 
@@ -114,6 +118,7 @@ export function Pedido({ simulationId }) {
       const safeName = (bundle.client.nome || 'cliente')
         .replace(/[^\w-]+/g, '_')
         .slice(0, 40)
+      const { downloadPedidoPdfFromElement } = await import('../services/pedidoPdf')
       await downloadPedidoPdfFromElement(
         printRef.current,
         `pedido-syagri-${bundle.simulation.id}-${safeName}.pdf`,
@@ -122,7 +127,7 @@ export function Pedido({ simulationId }) {
       if (isCif) {
         const addr = await updateClientDeliveryFields({
           clientId: bundle.client.id,
-          cep: normalizeCepDigits(cep) || null,
+          cep: parseCepInput(cep) || null,
           logradouro: logradouro.trim() || null,
           bairro: bairro.trim() || null,
           municipio: municipio.trim() || null,
@@ -138,7 +143,7 @@ export function Pedido({ simulationId }) {
                 ...prev,
                 client: {
                   ...prev.client,
-                  cep: normalizeCepDigits(cep) || null,
+                  cep: parseCepInput(cep) || null,
                   logradouro: logradouro.trim() || null,
                   bairro: bairro.trim() || null,
                   municipio: municipio.trim() || null,
@@ -249,7 +254,7 @@ export function Pedido({ simulationId }) {
                 CPF / CNPJ
               </dt>
               <dd className="mt-1 text-base font-medium text-slate-900">
-                {bundle.client.cnpj_cpf}
+                {displayCpfCnpj(bundle.client.cnpj_cpf)}
               </dd>
             </div>
             {bundle.client.email ? (
@@ -266,7 +271,7 @@ export function Pedido({ simulationId }) {
                   Telefone
                 </dt>
                 <dd className="mt-1 text-base text-slate-800">
-                  {bundle.client.telefone}
+                  {displayPhone(bundle.client.telefone)}
                 </dd>
               </div>
             ) : null}
@@ -286,11 +291,12 @@ export function Pedido({ simulationId }) {
             <h2 className="mb-4 text-sm font-semibold text-primary-800">Entrega</h2>
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
-                <Input
+                <FormattedInput
+                  format="cep"
                   label="CEP"
                   placeholder="00000-000"
                   value={cep}
-                  onChange={(e) => setCep(normalizeCepDigits(e.target.value))}
+                  onChange={(e) => setCep(e.target.value)}
                   disabled={formLocked}
                   className="finance-text"
                 />

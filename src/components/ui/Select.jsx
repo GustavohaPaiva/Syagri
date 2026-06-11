@@ -1,7 +1,7 @@
-import { forwardRef, useId } from 'react'
+import { forwardRef, useId } from "react";
 
 const baseClass =
-  'h-11 w-full rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition-[border-color,box-shadow] focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500'
+  "h-11 w-full rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition-[border-color,box-shadow] focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500";
 
 export const Select = forwardRef(function Select(
   {
@@ -10,16 +10,16 @@ export const Select = forwardRef(function Select(
     options,
     error,
     id: idProp,
-    className = '',
+    className = "",
     children,
     ...props
   },
   ref,
 ) {
-  const generatedId = useId()
-  const selectId = idProp ?? generatedId
-  const errorId = `${selectId}-error`
-  const hasError = Boolean(error)
+  const generatedId = useId();
+  const selectId = idProp ?? generatedId;
+  const errorId = `${selectId}-error`;
+  const hasError = Boolean(error);
 
   return (
     <div className="flex w-full flex-col gap-1.5">
@@ -38,11 +38,11 @@ export const Select = forwardRef(function Select(
         aria-describedby={hasError ? errorId : undefined}
         className={[
           baseClass,
-          hasError ? 'border-feedback-error' : '',
+          hasError ? "border-feedback-error" : "",
           className,
         ]
           .filter(Boolean)
-          .join(' ')}
+          .join(" ")}
         {...props}
       >
         {placeholder ? (
@@ -64,7 +64,7 @@ export const Select = forwardRef(function Select(
         </p>
       ) : null}
     </div>
-  )
-})
+  );
+});
 
-Select.displayName = 'Select'
+Select.displayName = "Select";

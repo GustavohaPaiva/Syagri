@@ -248,3 +248,34 @@ export function IconEye({ className }) {
     </svg>
   )
 }
+
+export function IconFileSpreadsheet({ className }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+      <path d="M8 13h2" />
+      <path d="M14 13h2" />
+      <path d="M8 17h2" />
+      <path d="M14 17h2" />
+    </svg>
+  )
+}
+
+export function IconArrowLeft({ className }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path d="m12 19-7-7 7-7" />
+      <path d="M19 12H5" />
+    </svg>
+  )
+}
+
+export function IconPlus({ className }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path d="M5 12h14" />
+      <path d="M12 5v14" />
+    </svg>
+  )
+}

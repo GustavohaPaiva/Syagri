@@ -1,9 +1,8 @@
-import * as XLSX from 'xlsx'
-
 /**
  * Lê a primeira planilha e retorna cabeçalhos (linha 1) + linhas de dados.
  */
 export async function parseSpreadsheetFile(file) {
+  const XLSX = await import('xlsx')
   const buffer = await file.arrayBuffer()
   const workbook = XLSX.read(buffer, { type: 'array', raw: false })
   const sheetName = workbook.SheetNames[0]

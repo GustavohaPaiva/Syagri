@@ -1,184 +1,201 @@
-import { useCallback, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ClienteCard } from '../components/clientes/ClienteCard'
-import { ModalClienteForm } from '../components/clientes/ModalClienteForm'
-import { AlertMessage } from '../components/ui/AlertMessage'
-import { Button } from '../components/ui/Button'
-import { DataTable } from '../components/ui/DataTable'
-import { MobileCardList } from '../components/ui/MobileCardList'
-import { PageHeader } from '../components/ui/PageHeader'
-import { SearchInput } from '../components/ui/SearchInput'
-import { useAbortableAsync } from '../hooks/useAbortableAsync'
-import { useAuth } from '../hooks/useAuth'
-import { fetchClientsList } from '../services/clientService'
-import { formatShortDate } from '../utils/formatShortDate'
+import { useCallback, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  ClienteFiltersPanel,
+  ClienteStatsBar,
+} from "../components/clientes/ClienteVisuals";
+import { ClienteTable } from "../components/clientes/ClienteTable";
+import { ModalClienteForm } from "../components/clientes/ModalClienteForm";
+import { IconUsers } from "../components/icons";
+import { AlertMessage } from "../components/ui/AlertMessage";
+import { Button } from "../components/ui/Button";
+import { PageHeader } from "../components/ui/PageHeader";
+import { PaginationBar } from "../components/ui/PaginationBar";
+import { useSyncPageLoading } from "../contexts/PageLoadingContext";
+import { useAbortableAsync } from "../hooks/useAbortableAsync";
+import { useAuth } from "../hooks/useAuth";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import {
+  fetchClientsList,
+  fetchClientsTotalCount,
+} from "../services/clientService";
+
+const PAGE_SIZE = 50;
 
 export function GerenciarClientes() {
-  const navigate = useNavigate()
-  const { role } = useAuth()
-  const isGestor = role === 'gestor'
-  const [rows, setRows] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editingClient, setEditingClient] = useState(null)
+  const navigate = useNavigate();
+  const { role } = useAuth();
+  const isGestor = role === "gestor";
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
-  const loadClients = useCallback(async (isActive, search) => {
-    setLoading(true)
-    setLoadError(null)
+  useSyncPageLoading(loading);
 
-    const result = await fetchClientsList({ search })
-
-    if (!isActive()) return
-
-    setLoading(false)
-    if (!result.ok) {
-      setLoadError(result.error)
-      setRows([])
-      return
-    }
-    setRows(result.rows)
-  }, [])
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(page * PAGE_SIZE, total);
 
   useAbortableAsync(
     async (_signal, isActive) => {
-      await loadClients(isActive, searchQuery)
+      const countResult = await fetchClientsTotalCount();
+      if (!isActive()) return;
+      if (countResult.ok) setTotalCount(countResult.total);
     },
-    [loadClients, searchQuery],
-  )
+    [reloadToken],
+  );
+
+  useAbortableAsync(
+    async (_signal, isActive) => {
+      setLoading(true);
+      setLoadError(null);
+
+      const result = await fetchClientsList({
+        search: debouncedSearch,
+        page,
+        pageSize: PAGE_SIZE,
+      });
+
+      if (!isActive()) return;
+
+      setLoading(false);
+      if (!result.ok) {
+        setLoadError(result.error);
+        setRows([]);
+        setTotal(0);
+        return;
+      }
+
+      setRows(result.rows);
+      setTotal(result.total);
+    },
+    [debouncedSearch, page, reloadToken],
+  );
+
+  const reload = useCallback(() => {
+    setReloadToken((n) => n + 1);
+  }, []);
+
+  const hasFilters = Boolean(searchQuery.trim());
 
   const emptyMessage =
-    rows.length === 0 && !searchQuery.trim()
-      ? 'Nenhum cliente cadastrado.'
-      : 'Nenhum resultado para a busca.'
-
-  const tableColumns = useMemo(
-    () => [
-      {
-        key: 'nome',
-        header: 'Nome',
-        cellClassName: 'font-medium text-slate-900',
-        render: (row) => row.nome,
-      },
-      {
-        key: 'cnpj_cpf',
-        header: 'CPF / CNPJ',
-        render: (row) => row.cnpj_cpf,
-      },
-      {
-        key: 'local',
-        header: 'Local',
-        render: (row) =>
-          [row.municipio, row.uf].filter(Boolean).join(' — ') || '—',
-      },
-      {
-        key: 'created_at',
-        header: 'Cadastro',
-        render: (row) => formatShortDate(row.created_at),
-      },
-      {
-        key: 'actions',
-        header: 'Ações',
-        align: 'right',
-        headerClassName: 'w-40',
-        render: (row) => (
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              className="min-h-0 px-3"
-              onClick={() => navigate(`/clientes/${row.id}`)}
-            >
-              Ver detalhes
-            </Button>
-            {isGestor ? (
-              <Button
-                type="button"
-                variant="ghost"
-                className="min-h-0 px-3"
-                onClick={() => {
-                  setEditingClient(row)
-                  setModalOpen(true)
-                }}
-              >
-                Editar
-              </Button>
-            ) : null}
-          </div>
-        ),
-      },
-    ],
-    [isGestor, navigate],
-  )
+    rows.length === 0 && !hasFilters
+      ? "Nenhum cliente cadastrado."
+      : "Nenhum resultado para a busca.";
 
   function openCreateModal() {
-    setEditingClient(null)
-    setModalOpen(true)
+    setEditingClient(null);
+    setModalOpen(true);
   }
 
   function closeModal() {
-    setModalOpen(false)
-    setEditingClient(null)
+    setModalOpen(false);
+    setEditingClient(null);
   }
 
   return (
-    <div className="w-full">
-      <PageHeader
-        title="Clientes"
-        actions={
-          <Button type="button" onClick={openCreateModal}>
-            Novo cliente
-          </Button>
-        }
-      />
-
-      {loadError ? <AlertMessage className="mt-6">{loadError}</AlertMessage> : null}
-
-      <div className="mt-6 w-full sm:max-w-xs lg:max-w-sm">
-        <SearchInput
-          placeholder="Buscar por nome ou CPF/CNPJ…"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+    <div className="w-full min-w-0 space-y-4 sm:space-y-6">
+      <div className="relative overflow-hidden rounded-2xl border border-primary-100/80 bg-gradient-to-br from-primary-50/80 via-white to-emerald-50/40 p-4 shadow-sm sm:rounded-[2rem] sm:p-6 lg:p-8">
+        <div
+          className="pointer-events-none absolute -right-8 -top-8 size-28 rounded-full bg-primary-200/30 blur-3xl sm:-right-10 sm:-top-10 sm:size-40"
+          aria-hidden
         />
+        <div
+          className="pointer-events-none absolute -bottom-6 left-1/4 size-24 rounded-full bg-emerald-200/20 blur-3xl sm:-bottom-8 sm:left-1/3 sm:size-32"
+          aria-hidden
+        />
+
+        <PageHeader
+          eyebrow="Comercial"
+          title="Clientes"
+          description="Gerencie a carteira de clientes, consulte cadastros e acompanhe o histórico comercial."
+          actions={
+            <Button
+              type="button"
+              className="w-full sm:w-auto"
+              onClick={openCreateModal}
+            >
+              Novo cliente
+            </Button>
+          }
+          className="relative mb-0"
+        />
+
+        <div className="relative mt-4 flex items-start gap-3 rounded-xl border border-white/80 bg-white/60 p-3 backdrop-blur-sm sm:mt-5 sm:items-center sm:rounded-2xl sm:px-4 sm:py-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-white shadow-sm sm:size-9 sm:rounded-xl">
+            <IconUsers className="size-3.5 sm:size-4" />
+          </span>
+          <p className="min-w-0 text-sm leading-relaxed text-slate-700">
+            {loading
+              ? "Carregando carteira de clientes…"
+              : hasFilters
+                ? `${total.toLocaleString("pt-BR")} cliente(s) encontrado(s) na busca.`
+                : `${totalCount.toLocaleString("pt-BR")} cliente(s) cadastrado(s) na operação.`}
+          </p>
+        </div>
       </div>
 
-      <MobileCardList
-        className="mt-6"
-        items={rows}
+      {loadError ? <AlertMessage>{loadError}</AlertMessage> : null}
+
+      <ClienteStatsBar
+        total={totalCount}
+        filtered={hasFilters ? total : rows.length}
         loading={loading}
-        emptyMessage={emptyMessage}
-        renderItem={(cliente) => (
-          <ClienteCard
-            key={cliente.id}
-            cliente={cliente}
-            canEdit={isGestor}
-            onViewDetails={(id) => navigate(`/clientes/${id}`)}
-            onEdit={(c) => {
-              setEditingClient(c)
-              setModalOpen(true)
-            }}
-          />
-        )}
       />
 
-      <DataTable
-        className="mt-6"
-        columns={tableColumns}
+      <ClienteFiltersPanel
+        searchQuery={searchQuery}
+        hasFilters={hasFilters}
+        onClear={() => {
+          setSearchQuery("");
+          setPage(1);
+        }}
+        onSearchChange={(e) => {
+          setSearchQuery(e.target.value);
+          setPage(1);
+        }}
+      />
+
+      <ClienteTable
         rows={rows}
         loading={loading}
         emptyMessage={emptyMessage}
-        getRowKey={(row) => row.id}
+        isGestor={isGestor}
+        onViewDetails={(id) => navigate(`/clientes/${id}`)}
+        onEdit={(client) => {
+          setEditingClient(client);
+          setModalOpen(true);
+        }}
+      />
+
+      <PaginationBar
+        page={page}
+        totalPages={totalPages}
+        rangeStart={rangeStart}
+        rangeEnd={rangeEnd}
+        total={total}
+        loading={loading}
+        itemLabel="clientes"
+        onPrev={() => setPage((p) => Math.max(1, p - 1))}
+        onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
       />
 
       <ModalClienteForm
         open={modalOpen}
-        mode={editingClient ? 'edit' : 'create'}
+        mode={editingClient ? "edit" : "create"}
         clientId={editingClient?.id}
         initial={editingClient ?? undefined}
         onClose={closeModal}
-        onSaved={() => void loadClients(() => true, searchQuery)}
+        onSaved={reload}
       />
     </div>
-  )
+  );
 }

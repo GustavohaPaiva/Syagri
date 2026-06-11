@@ -5,15 +5,25 @@ export function PageBackLink({ to, children, className = '' }) {
     <Link
       to={to}
       className={[
-        'mb-6 inline-flex h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-primary-200 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
+        'mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
         className,
       ]
         .filter(Boolean)
         .join(' ')}
     >
-      <span aria-hidden className="text-base leading-none">
-        ←
-      </span>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="size-3.5 shrink-0"
+        aria-hidden
+      >
+        <path d="m15 18-6-6 6-6" />
+      </svg>
       {children}
     </Link>
   )

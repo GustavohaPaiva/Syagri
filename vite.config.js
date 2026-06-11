@@ -7,6 +7,29 @@ const pagesBase = '/Syagri/'
 
 export default defineConfig(({ mode }) => ({
   base: mode === 'production' ? pagesBase : '/',
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
+            return 'vendor-react'
+          }
+          if (id.includes('node_modules/react-router')) {
+            return 'vendor-router'
+          }
+          if (id.includes('@supabase')) {
+            return 'vendor-supabase'
+          }
+          if (id.includes('node_modules/xlsx')) {
+            return 'vendor-xlsx'
+          }
+          if (id.includes('jspdf') || id.includes('html2canvas')) {
+            return 'vendor-pdf'
+          }
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),

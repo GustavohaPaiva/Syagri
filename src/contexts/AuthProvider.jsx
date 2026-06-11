@@ -76,7 +76,23 @@ export function AuthProvider({ children }) {
           return
         }
 
-        await applySession(initialSession)
+        if (initialSession?.user) {
+          setSession(initialSession)
+          setUser(initialSession.user)
+          setProfileLoading(true)
+          void fetchProfile(initialSession.user.id)
+            .then((p) => {
+              if (!cancelled) setProfile(p)
+            })
+            .catch(() => {
+              if (!cancelled) setProfile(null)
+            })
+            .finally(() => {
+              if (!cancelled) setProfileLoading(false)
+            })
+        } else {
+          clearAuth()
+        }
       } catch {
         if (!cancelled) clearAuth()
       } finally {

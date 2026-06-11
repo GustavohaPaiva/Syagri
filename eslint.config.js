@@ -23,6 +23,19 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'react-refresh/only-export-components': [
+        'error',
+        { allowConstantExport: true },
+      ],
+    },
+  },
+  {
+    files: [
+      'src/contexts/**/*.{js,jsx}',
+      'src/components/**/*Visuals.jsx',
+    ],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
 ])

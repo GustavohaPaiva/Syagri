@@ -1,6 +1,15 @@
 import { useState } from 'react'
+import { useAlertDialog } from '../../contexts/AlertDialogProvider'
+import {
+  parseCpfCnpjInput,
+  parsePhoneInput,
+  validateCpfCnpj,
+  validateEmail,
+  validatePhone,
+} from '../../utils/dataFormatters'
 import { AlertMessage } from '../ui/AlertMessage'
 import { FormSection } from '../ui/FormSection'
+import { FormattedInput } from '../ui/FormattedInput'
 import { Input } from '../ui/Input'
 import { Modal } from '../ui/Modal'
 import { ModalFormFooter } from '../ui/ModalFormFooter'
@@ -21,6 +30,16 @@ const EMPTY = {
   uf: '',
 }
 
+function normalizeInitial(initial) {
+  if (!initial) return EMPTY
+  return {
+    ...EMPTY,
+    ...initial,
+    cnpj_cpf: parseCpfCnpjInput(initial.cnpj_cpf ?? ''),
+    telefone: parsePhoneInput(initial.telefone ?? ''),
+  }
+}
+
 export function ModalClienteForm({
   open,
   mode = 'create',
@@ -29,6 +48,7 @@ export function ModalClienteForm({
   onClose,
   onSaved,
 }) {
+  const { showAlert } = useAlertDialog()
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState(null)
@@ -38,7 +58,7 @@ export function ModalClienteForm({
   useAbortableAsync(
     async (_signal, isActive) => {
       if (!isActive()) return
-      setForm({ ...EMPTY, ...initial })
+      setForm(normalizeInitial(initial))
       setFormError(null)
       setSaving(false)
     },
@@ -55,9 +75,54 @@ export function ModalClienteForm({
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  function validateForm() {
+    if (!form.nome.trim()) {
+      showAlert({
+        title: 'Nome obrigatório',
+        message: 'Informe o nome do cliente.',
+      })
+      return false
+    }
+
+    const documentValidation = validateCpfCnpj(form.cnpj_cpf, { required: true })
+    if (!documentValidation.ok) {
+      showAlert({
+        title: 'CPF / CNPJ inválido',
+        message: documentValidation.message,
+      })
+      return false
+    }
+
+    if (form.telefone) {
+      const phoneValidation = validatePhone(form.telefone)
+      if (!phoneValidation.ok) {
+        showAlert({
+          title: 'Telefone inválido',
+          message: phoneValidation.message,
+        })
+        return false
+      }
+    }
+
+    if (form.email) {
+      const emailValidation = validateEmail(form.email)
+      if (!emailValidation.ok) {
+        showAlert({
+          title: 'E-mail inválido',
+          message: emailValidation.message,
+        })
+        return false
+      }
+    }
+
+    return true
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setFormError(null)
+
+    if (!validateForm()) return
 
     const payload = {
       nome: form.nome,
@@ -109,10 +174,11 @@ export function ModalClienteForm({
               onChange={(e) => setField('nome', e.target.value)}
               disabled={saving}
             />
-            <Input
+            <FormattedInput
+              format="cpfCnpj"
               label="CPF / CNPJ"
               name="cnpj_cpf"
-              placeholder="Somente números ou formatado"
+              placeholder="000.000.000-00 ou 00.000.000/0000-00"
               value={form.cnpj_cpf}
               onChange={(e) => setField('cnpj_cpf', e.target.value)}
               disabled={saving}
@@ -141,7 +207,8 @@ export function ModalClienteForm({
               onChange={(e) => setField('email', e.target.value)}
               disabled={saving}
             />
-            <Input
+            <FormattedInput
+              format="phone"
               label="Telefone"
               name="telefone"
               placeholder="(00) 00000-0000"

@@ -1,5 +1,4 @@
 import { supabase } from './supabase'
-import { parseSpreadsheetFile } from '../utils/spreadsheetParser'
 import { IGNORE_COLUMN_VALUE } from '../constants/mapeamentoCampos'
 
 export async function fetchFornecedoresAtivos() {
@@ -154,6 +153,7 @@ export async function processLoteComTemplate({
     }
   }
 
+  const { parseSpreadsheetFile } = await import('../utils/spreadsheetParser')
   const parsed = await parseSpreadsheetFile(file)
   if (!parsed.ok) {
     return { ok: false, error: parsed.error }

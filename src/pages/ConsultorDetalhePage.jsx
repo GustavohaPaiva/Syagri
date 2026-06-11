@@ -1,138 +1,134 @@
-import { useCallback, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   ConsultorDetailStats,
   ConsultorInfoPanel,
   ConsultorProfileHero,
-} from '../components/consultores/ConsultorDetailVisuals'
-import { ModalEditarConsultor } from '../components/consultores/ModalEditarConsultor'
-import { ModalTrocarCredenciais } from '../components/consultores/ModalTrocarCredenciais'
-import { AlertMessage } from '../components/ui/AlertMessage'
-import { Button } from '../components/ui/Button'
-import { EmptyState } from '../components/ui/EmptyState'
-import { PageBackLink } from '../components/ui/PageBackLink'
-import { useAbortableAsync } from '../hooks/useAbortableAsync'
-import { supabase } from '../services/supabase'
-import { parseSyagriLocalFromEmail } from '../utils/syagriEmail'
+} from "../components/consultores/ConsultorDetailVisuals";
+import { ModalEditarConsultor } from "../components/consultores/ModalEditarConsultor";
+import { ModalTrocarCredenciais } from "../components/consultores/ModalTrocarCredenciais";
+import { AlertMessage } from "../components/ui/AlertMessage";
+import { EmptyState } from "../components/ui/EmptyState";
+import { PageBackLink } from "../components/ui/PageBackLink";
+import { useSyncPageLoading } from "../contexts/PageLoadingContext";
+import { useAbortableAsync } from "../hooks/useAbortableAsync";
+import { supabase } from "../services/supabase";
+import { parseSyagriLocalFromEmail } from "../utils/syagriEmail";
 
 export function ConsultorDetalhePage() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const [loading, setLoading] = useState(Boolean(id))
-  const [error, setError] = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [metric, setMetric] = useState(null)
-  const [email, setEmail] = useState('')
-  const [editOpen, setEditOpen] = useState(false)
-  const [credOpen, setCredOpen] = useState(false)
-  const [reloadToken, setReloadToken] = useState(0)
+  const { id } = useParams();
+  const [loading, setLoading] = useState(Boolean(id));
+  const [error, setError] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [metric, setMetric] = useState(null);
+  const [email, setEmail] = useState("");
+  const [editOpen, setEditOpen] = useState(false);
+  const [credOpen, setCredOpen] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  useSyncPageLoading(loading);
 
   const reload = useCallback(() => {
-    setReloadToken((n) => n + 1)
-  }, [])
+    setReloadToken((n) => n + 1);
+  }, []);
 
   useAbortableAsync(
     async (_signal, isActive) => {
-      if (!id) return
+      if (!id) return;
 
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
       const [metricRes, profileRes, emailRes] = await Promise.all([
         supabase
-          .from('consultor_metricas')
-          .select('consultor_id, consultor_nome, total_simulacoes, total_vendas')
-          .eq('consultor_id', id)
+          .from("consultor_metricas")
+          .select(
+            "consultor_id, consultor_nome, total_simulacoes, total_vendas",
+          )
+          .eq("consultor_id", id)
           .maybeSingle(),
         supabase
-          .from('profiles')
-          .select('id, nome, created_at, role')
-          .eq('id', id)
+          .from("profiles")
+          .select("id, nome, created_at, role")
+          .eq("id", id)
           .maybeSingle(),
-        supabase.rpc('get_consultant_email', { p_consultor_id: id }),
-      ])
+        supabase.rpc("get_consultant_email", { p_consultor_id: id }),
+      ]);
 
-      if (!isActive()) return
+      if (!isActive()) return;
 
-      setLoading(false)
+      setLoading(false);
 
       if (metricRes.error) {
-        setError(metricRes.error.message)
-        setMetric(null)
-        setProfile(null)
-        return
+        setError(metricRes.error.message);
+        setMetric(null);
+        setProfile(null);
+        return;
       }
       if (profileRes.error) {
-        setError(profileRes.error.message)
-        setMetric(null)
-        setProfile(null)
-        return
+        setError(profileRes.error.message);
+        setMetric(null);
+        setProfile(null);
+        return;
       }
       if (!metricRes.data || !profileRes.data) {
-        setError('Consultor não encontrado ou sem permissão para visualizar.')
-        setMetric(null)
-        setProfile(null)
-        return
+        setError("Consultor não encontrado ou sem permissão para visualizar.");
+        setMetric(null);
+        setProfile(null);
+        return;
       }
 
-      setMetric(metricRes.data)
-      setProfile(profileRes.data)
+      setMetric(metricRes.data);
+      setProfile(profileRes.data);
       if (emailRes.error) {
-        setEmail('')
+        setEmail("");
       } else {
-        setEmail(String(emailRes.data ?? ''))
+        setEmail(String(emailRes.data ?? ""));
       }
     },
     [id, reloadToken],
     Boolean(id),
-  )
+  );
 
   if (!id) {
     return (
       <div className="w-full min-w-0 space-y-4">
-        <PageBackLink to="/admin/consultores">Voltar para consultores</PageBackLink>
+        <PageBackLink to="/admin/consultores">
+          Voltar para consultores
+        </PageBackLink>
         <AlertMessage>Consultor não informado.</AlertMessage>
       </div>
-    )
+    );
   }
 
-  const usuario = parseSyagriLocalFromEmail(email)
+  const usuario = parseSyagriLocalFromEmail(email);
   const conversionRate =
     metric && Number(metric.total_simulacoes) > 0
       ? Math.round(
           (Number(metric.total_vendas) / Number(metric.total_simulacoes)) * 100,
         )
-      : 0
+      : 0;
 
   return (
     <div className="w-full min-w-0 space-y-4 sm:space-y-6">
-      <PageBackLink to="/admin/consultores">Voltar para consultores</PageBackLink>
+      <PageBackLink to="/admin/consultores">
+        Voltar para consultores
+      </PageBackLink>
 
       {loading ? (
-        <EmptyState title="Carregando consultor…" description="Aguarde um instante." />
+        <EmptyState
+          title="Carregando consultor…"
+          description="Aguarde um instante."
+        />
       ) : error ? (
         <AlertMessage>{error}</AlertMessage>
       ) : profile && metric ? (
         <>
-          <ConsultorProfileHero nome={profile.nome} email={email} usuario={usuario} />
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center lg:justify-end">
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full sm:w-auto"
-              onClick={() => setEditOpen(true)}
-            >
-              Editar nome
-            </Button>
-            <Button
-              type="button"
-              className="w-full sm:w-auto"
-              onClick={() => setCredOpen(true)}
-            >
-              Trocar credenciais
-            </Button>
-          </div>
+          <ConsultorProfileHero
+            nome={profile.nome}
+            email={email}
+            usuario={usuario}
+          />
 
           <ConsultorDetailStats
             metric={metric}
@@ -140,18 +136,12 @@ export function ConsultorDetalhePage() {
             loading={loading}
           />
 
-          <ConsultorInfoPanel profile={profile} usuario={usuario} />
-
-          <div className="flex justify-center sm:justify-start">
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full sm:w-auto"
-              onClick={() => navigate('/admin/consultores')}
-            >
-              Ver todos os consultores
-            </Button>
-          </div>
+          <ConsultorInfoPanel
+            profile={profile}
+            usuario={usuario}
+            onEdit={() => setEditOpen(true)}
+            onTrocarCredenciais={() => setCredOpen(true)}
+          />
 
           <ModalEditarConsultor
             open={editOpen}
@@ -170,5 +160,5 @@ export function ConsultorDetalhePage() {
         </>
       ) : null}
     </div>
-  )
+  );
 }

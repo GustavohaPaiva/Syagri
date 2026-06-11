@@ -1,5 +1,5 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { IconSearch } from '../icons'
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { IconSearch } from "../icons";
 
 /**
  * Combobox simples: input com busca + dropdown.
@@ -14,8 +14,8 @@ import { IconSearch } from '../icons'
  */
 export function Combobox({
   label,
-  placeholder = 'Buscar…',
-  value = '',
+  placeholder = "Buscar…",
+  value = "",
   onTextChange,
   options,
   onSearch,
@@ -24,86 +24,82 @@ export function Combobox({
   createLabel,
   disabled = false,
   allowFreeText = true,
-  emptyMessage = 'Nenhum resultado.',
-  className = '',
+  emptyMessage = "Nenhum resultado.",
+  className = "",
 }) {
-  const inputId = useId()
-  const wrapRef = useRef(null)
-  const [open, setOpen] = useState(false)
-  const [asyncResults, setAsyncResults] = useState([])
-  const [searching, setSearching] = useState(false)
+  const inputId = useId();
+  const wrapRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [asyncResults, setAsyncResults] = useState([]);
+  const [searching, setSearching] = useState(false);
 
-  const isAsync = typeof onSearch === 'function'
-  const trimmedValue = value.trim()
+  const isAsync = typeof onSearch === "function";
+  const trimmedValue = value.trim();
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
     function handlePointerDown(event) {
-      if (!wrapRef.current?.contains(event.target)) setOpen(false)
+      if (!wrapRef.current?.contains(event.target)) setOpen(false);
     }
-    document.addEventListener('mousedown', handlePointerDown)
-    return () => document.removeEventListener('mousedown', handlePointerDown)
-  }, [open])
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [open]);
 
   useEffect(() => {
-    if (!isAsync) return
-    if (!open) return
+    if (!isAsync) return;
+    if (!open) return;
 
-    const controller = new AbortController()
+    const controller = new AbortController();
     const handle = window.setTimeout(() => {
-      setSearching(true)
+      setSearching(true);
       void Promise.resolve()
         .then(() => onSearch(value, controller.signal))
         .then((r) => {
           if (!controller.signal.aborted) {
-            setAsyncResults(r ?? [])
-            setSearching(false)
+            setAsyncResults(r ?? []);
+            setSearching(false);
           }
         })
         .catch(() => {
-          if (!controller.signal.aborted) setSearching(false)
-        })
-    }, 200)
+          if (!controller.signal.aborted) setSearching(false);
+        });
+    }, 200);
 
     return () => {
-      window.clearTimeout(handle)
-      controller.abort()
-    }
-  }, [value, open, isAsync, onSearch])
+      window.clearTimeout(handle);
+      controller.abort();
+    };
+  }, [value, open, isAsync, onSearch]);
 
   const filtered = useMemo(() => {
-    if (isAsync) return asyncResults
-    const q = trimmedValue.toLowerCase()
-    if (!q) return options ?? []
-    return (options ?? []).filter((o) => o.label.toLowerCase().includes(q))
-  }, [isAsync, asyncResults, options, trimmedValue])
+    if (isAsync) return asyncResults;
+    const q = trimmedValue.toLowerCase();
+    if (!q) return options ?? [];
+    return (options ?? []).filter((o) => o.label.toLowerCase().includes(q));
+  }, [isAsync, asyncResults, options, trimmedValue]);
 
   const showCreateAction =
     Boolean(onCreateRequest) &&
     !searching &&
     filtered.length === 0 &&
-    trimmedValue.length > 0
+    trimmedValue.length > 0;
 
   function handleSelect(opt) {
-    onSelect?.(opt)
-    setOpen(false)
+    onSelect?.(opt);
+    setOpen(false);
   }
 
   function handleCreate() {
-    onCreateRequest?.()
-    setOpen(false)
+    onCreateRequest?.();
+    setOpen(false);
   }
 
-  const createActionLabel =
-    createLabel ?? `Cadastrar "${trimmedValue}"`
+  const createActionLabel = createLabel ?? `Cadastrar "${trimmedValue}"`;
 
   return (
-    <div className={['flex w-full flex-col gap-1.5', className].join(' ')}>
+    <div className={["flex w-full flex-col gap-1.5", className].join(" ")}>
       {label ? (
-        <label
-          htmlFor={inputId}
-          className="text-sm font-medium text-slate-700"
-        >
+        <label htmlFor={inputId} className="text-sm font-medium text-slate-700">
           {label}
         </label>
       ) : null}
@@ -120,8 +116,8 @@ export function Combobox({
           value={value}
           onFocus={() => setOpen(true)}
           onChange={(e) => {
-            onTextChange?.(e.target.value)
-            if (!open) setOpen(true)
+            onTextChange?.(e.target.value);
+            if (!open) setOpen(true);
           }}
           className="h-10 w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/25 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
         />
@@ -149,7 +145,7 @@ export function Combobox({
             ) : filtered.length === 0 ? (
               <li className="px-3 py-2 text-sm text-slate-500">
                 {allowFreeText && trimmedValue
-                  ? 'Digite para buscar ou cadastrar'
+                  ? "Digite para buscar ou cadastrar"
                   : emptyMessage}
               </li>
             ) : (
@@ -175,5 +171,5 @@ export function Combobox({
         ) : null}
       </div>
     </div>
-  )
+  );
 }

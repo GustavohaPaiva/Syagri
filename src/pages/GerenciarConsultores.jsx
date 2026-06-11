@@ -7,6 +7,7 @@ import { IconUsers } from '../components/icons'
 import { AlertMessage } from '../components/ui/AlertMessage'
 import { Button } from '../components/ui/Button'
 import { PageHeader } from '../components/ui/PageHeader'
+import { useSyncPageLoading } from '../contexts/PageLoadingContext'
 import { useAbortableAsync } from '../hooks/useAbortableAsync'
 import { supabase } from '../services/supabase'
 
@@ -17,6 +18,8 @@ export function GerenciarConsultores() {
   const [loadError, setLoadError] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+
+  useSyncPageLoading(loading)
 
   const loadConsultores = useCallback(async (isActive) => {
     setLoading(true)

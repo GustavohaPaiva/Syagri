@@ -1,5 +1,6 @@
 import { Button } from '../ui/Button'
 import { formatShortDate } from '../../utils/formatShortDate'
+import { displayCpfCnpj } from '../../utils/dataFormatters'
 
 export function ClienteCard({ cliente, canEdit, onViewDetails, onEdit }) {
   return (
@@ -10,7 +11,7 @@ export function ClienteCard({ cliente, canEdit, onViewDetails, onEdit }) {
           <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
             CPF / CNPJ
           </dt>
-          <dd className="font-medium text-slate-800">{cliente.cnpj_cpf}</dd>
+          <dd className="font-medium text-slate-800">{displayCpfCnpj(cliente.cnpj_cpf)}</dd>
         </div>
         {cliente.municipio || cliente.uf ? (
           <div>

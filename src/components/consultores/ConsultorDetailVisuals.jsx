@@ -1,4 +1,5 @@
 import { IconClipboardList, IconDollarSign, IconUser, IconUsers } from '../icons'
+import { Button } from '../ui/Button'
 import { formatShortDate } from '../../utils/formatShortDate'
 
 function consultorInitial(nome) {
@@ -97,7 +98,7 @@ export function ConsultorProfileHero({ nome, email, usuario }) {
   )
 }
 
-export function ConsultorInfoPanel({ profile, usuario }) {
+export function ConsultorInfoPanel({ profile, usuario, onEdit, onTrocarCredenciais }) {
   const rows = [
     { label: 'Cadastro', value: formatShortDate(profile.created_at) },
     { label: 'Usuário', value: usuario ? `${usuario}@syagri.com.br` : '—' },
@@ -107,15 +108,36 @@ export function ConsultorInfoPanel({ profile, usuario }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm sm:rounded-3xl">
       <div className="border-b border-slate-100 bg-gradient-to-r from-primary-50/70 via-white to-violet-50/40 px-4 py-3.5 sm:px-6 sm:py-4">
-        <div className="flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
-            <IconUser className="size-4" />
-          </span>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-700">
-              Cadastro e acesso
-            </p>
-            <p className="mt-0.5 text-sm text-slate-600">Dados de identificação do consultor.</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+              <IconUser className="size-4" />
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-700">
+                Cadastro e acesso
+              </p>
+              <p className="mt-0.5 text-sm text-slate-600">
+                Dados de identificação do consultor.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 sm:shrink-0 sm:flex-row">
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-9 w-full px-3 sm:w-auto"
+              onClick={onEdit}
+            >
+              Editar nome
+            </Button>
+            <Button
+              type="button"
+              className="h-9 w-full px-3 sm:w-auto"
+              onClick={onTrocarCredenciais}
+            >
+              Trocar credenciais
+            </Button>
           </div>
         </div>
       </div>

@@ -1,192 +1,234 @@
-import { useCallback, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { SimulationListCard } from '../components/SimulationListCard'
-import { AlertMessage } from '../components/ui/AlertMessage'
-import { Button } from '../components/ui/Button'
-import { EmptyState } from '../components/ui/EmptyState'
-import { PageHeader } from '../components/ui/PageHeader'
-import { SearchInput } from '../components/ui/SearchInput'
-import { useAbortableAsync } from '../hooks/useAbortableAsync'
-import { useAuth } from '../hooks/useAuth'
+import { useCallback, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { SimulationListCard } from "../components/SimulationListCard";
+import {
+  SimulacaoFiltersPanel,
+  SimulacaoStatsBar,
+} from "../components/simulacoes/SimulacaoVisuals";
+import { IconClipboardList } from "../components/icons";
+import { AlertMessage } from "../components/ui/AlertMessage";
+import { Button } from "../components/ui/Button";
+import { EmptyState } from "../components/ui/EmptyState";
+import { PageHeader } from "../components/ui/PageHeader";
+import { PaginationBar } from "../components/ui/PaginationBar";
+import { useSyncPageLoading } from "../contexts/PageLoadingContext";
+import { useAbortableAsync } from "../hooks/useAbortableAsync";
+import { useAuth } from "../hooks/useAuth";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import {
   fetchSimulationsList,
   updateSimulationStatus,
-} from '../services/simulationOrderService'
+} from "../services/simulationOrderService";
 
-const FILTER_PILLS = [
-  { key: 'all', label: 'Todos' },
-  { key: 'draft', label: 'Rascunhos' },
-  { key: 'pending', label: 'Aguardando aprovação' },
-  { key: 'approved', label: 'Aprovados' },
-]
+const PAGE_SIZE = 50;
 
 export function ListagemSimulacoes() {
-  const { user, role, initializing } = useAuth()
-  const navigate = useNavigate()
-  const [rows, setRows] = useState([])
-  const [consultorNomeById, setConsultorNomeById] = useState({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [quickFilter, setQuickFilter] = useState('all')
-  const [pendingAction, setPendingAction] = useState(null)
-  const [reloadToken, setReloadToken] = useState(0)
-  const [searchQuery, setSearchQuery] = useState('')
+  const { user, role, initializing } = useAuth();
+  const navigate = useNavigate();
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [consultorNomeById, setConsultorNomeById] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [quickFilter, setQuickFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [reloadToken, setReloadToken] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
 
-  const statusForQuery = quickFilter === 'all' ? null : quickFilter
+  useSyncPageLoading(loading || initializing);
 
-  const canFetch = !initializing && Boolean(user?.id) && Boolean(role)
+  const statusForQuery = quickFilter === "all" ? null : quickFilter;
+  const canFetch = !initializing && Boolean(user?.id) && Boolean(role);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(page * PAGE_SIZE, total);
 
   useAbortableAsync(
     async (_signal, isActive) => {
       if (!user?.id || !role) {
-        if (!isActive()) return
-        setLoading(false)
-        setError('Perfil não encontrado.')
-        setRows([])
-        return
+        if (!isActive()) return;
+        setLoading(false);
+        setError("Perfil não encontrado.");
+        setRows([]);
+        setTotal(0);
+        return;
       }
 
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
       const result = await fetchSimulationsList({
         userId: user.id,
         role,
         statusFilter: statusForQuery,
-      })
+        search: debouncedSearch,
+        page,
+        pageSize: PAGE_SIZE,
+      });
 
-      if (!isActive()) return
+      if (!isActive()) return;
 
-      setLoading(false)
+      setLoading(false);
       if (!result.ok) {
-        setError(result.error)
-        setRows([])
-        setConsultorNomeById({})
-        return
+        setError(result.error);
+        setRows([]);
+        setTotal(0);
+        setConsultorNomeById({});
+        return;
       }
-      setRows(result.rows)
-      setConsultorNomeById(result.consultorNomeById)
+      setRows(result.rows);
+      setTotal(result.total);
+      setConsultorNomeById(result.consultorNomeById);
     },
-    [user, role, statusForQuery, reloadToken],
+    [user, role, statusForQuery, debouncedSearch, page, reloadToken],
     canFetch,
-  )
+  );
 
   const reload = useCallback(() => {
-    setReloadToken((n) => n + 1)
-  }, [])
+    setReloadToken((n) => n + 1);
+  }, []);
 
   function openSimulador(simulationId) {
-    navigate(`/simulador?simulationId=${encodeURIComponent(simulationId)}`)
+    navigate(`/simulador?simulationId=${encodeURIComponent(simulationId)}`);
   }
 
   async function handleApprove(id, clientName) {
-    setPendingAction({ id, type: 'approve' })
-    const r = await updateSimulationStatus(id, 'approved', {
+    setPendingAction({ id, type: "approve" });
+    const r = await updateSimulationStatus(id, "approved", {
       notifyConsultor: true,
       clientName,
-    })
-    setPendingAction(null)
+    });
+    setPendingAction(null);
     if (!r.ok) {
-      setError(r.error)
-      return
+      setError(r.error);
+      return;
     }
-    reload()
+    reload();
   }
 
   async function handleReject(id, clientName) {
-    setPendingAction({ id, type: 'reject' })
-    const r = await updateSimulationStatus(id, 'rejected', {
+    setPendingAction({ id, type: "reject" });
+    const r = await updateSimulationStatus(id, "rejected", {
       notifyConsultor: true,
       clientName,
-    })
-    setPendingAction(null)
+    });
+    setPendingAction(null);
     if (!r.ok) {
-      setError(r.error)
-      return
+      setError(r.error);
+      return;
     }
-    reload()
+    reload();
   }
 
-  const filterPillClass = (key) =>
-    [
-      'h-9 rounded-2xl border px-4 text-sm font-medium transition-colors',
-      quickFilter === key
-        ? 'border-primary-600 bg-primary-600 text-white shadow-sm'
-        : 'border-slate-200 bg-white text-slate-700 hover:border-primary-200 hover:bg-slate-50',
-    ].join(' ')
+  const isGestor = role === "gestor";
+  const hasFilters = Boolean(searchQuery.trim()) || quickFilter !== "all";
 
-  const isGestor = role === 'gestor'
+  const SIMULACAO_STATUS_FILTERS = [
+    { key: "all", label: "Todos" },
+    { key: "draft", label: "Rascunhos" },
+    { key: "pending", label: "Pendentes" },
+    { key: "approved", label: "Aprovados" },
+  ];
 
-  const filteredRows = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
-    if (!q) return rows
-    return rows.filter((row) => {
-      const client = row.client_nome.toLowerCase()
-      const consultor = (consultorNomeById[row.user_id] ?? '').toLowerCase()
-      return client.includes(q) || consultor.includes(q)
-    })
-  }, [rows, searchQuery, consultorNomeById])
+  const activeStatusLabel =
+    SIMULACAO_STATUS_FILTERS.find((pill) => pill.key === quickFilter)?.label ??
+    "Todos";
+
+  function clearFilters() {
+    setSearchQuery("");
+    setQuickFilter("all");
+    setPage(1);
+  }
 
   return (
-    <div className="w-full">
-      <PageHeader
-        title={isGestor ? 'Simulações' : 'Minhas simulações'}
-        description="Acompanhe rascunhos, aprovações e propostas convertidas."
-        actions={
-          <Button type="button" onClick={() => navigate('/simulador')}>
-            Nova simulação
-          </Button>
-        }
-        className="mb-6"
-      />
+    <div className="w-full min-w-0 space-y-4 sm:space-y-6">
+      <div className="relative overflow-hidden rounded-2xl border border-primary-100/80 bg-gradient-to-br from-primary-50/80 via-white to-violet-50/40 p-4 shadow-sm sm:rounded-[2rem] sm:p-6 lg:p-8">
+        <div
+          className="pointer-events-none absolute -right-8 -top-8 size-28 rounded-full bg-primary-200/30 blur-3xl sm:-right-10 sm:-top-10 sm:size-40"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -bottom-6 left-1/4 size-24 rounded-full bg-violet-200/20 blur-3xl sm:-bottom-8 sm:left-1/3 sm:size-32"
+          aria-hidden
+        />
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-        <div className="lg:w-80 lg:shrink-0">
-          <SearchInput
-            placeholder="Buscar por cliente ou consultor…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-wrap gap-2 lg:ml-auto lg:justify-end">
-          {FILTER_PILLS.map((pill) => (
-            <button
-              key={pill.key}
+        <PageHeader
+          eyebrow={isGestor ? "Gestão comercial" : "Operação"}
+          title={isGestor ? "Simulações" : "Minhas simulações"}
+          description="Acompanhe rascunhos, aprovações e propostas convertidas."
+          actions={
+            <Button
               type="button"
-              className={filterPillClass(pill.key)}
-              onClick={() => setQuickFilter(pill.key)}
+              className="w-full sm:w-auto"
+              onClick={() => navigate("/simulador")}
             >
-              {pill.label}
-            </button>
-          ))}
+              Nova simulação
+            </Button>
+          }
+          className="relative mb-0"
+        />
+
+        <div className="relative mt-4 flex items-start gap-3 rounded-xl border border-white/80 bg-white/60 p-3 backdrop-blur-sm sm:mt-5 sm:items-center sm:rounded-2xl sm:px-4 sm:py-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-white shadow-sm sm:size-9 sm:rounded-xl">
+            <IconClipboardList className="size-3.5 sm:size-4" />
+          </span>
+          <p className="min-w-0 text-sm leading-relaxed text-slate-700">
+            {loading || initializing
+              ? "Carregando simulações…"
+              : hasFilters
+                ? `${total.toLocaleString("pt-BR")} simulação(ões) encontrada(s) com os filtros atuais.`
+                : `${total.toLocaleString("pt-BR")} simulação(ões) disponível(is) nesta listagem.`}
+          </p>
         </div>
       </div>
 
-      {error ? <AlertMessage className="mt-4">{error}</AlertMessage> : null}
+      {error ? <AlertMessage>{error}</AlertMessage> : null}
+
+      <SimulacaoStatsBar
+        total={total}
+        filtered={rows.length}
+        loading={loading || initializing}
+        statusLabel={quickFilter === "all" ? null : activeStatusLabel}
+      />
+
+      <SimulacaoFiltersPanel
+        searchQuery={searchQuery}
+        onSearchChange={(e) => {
+          setSearchQuery(e.target.value);
+          setPage(1);
+        }}
+        quickFilter={quickFilter}
+        onQuickFilterChange={(value) => {
+          setQuickFilter(value);
+          setPage(1);
+        }}
+        hasFilters={hasFilters}
+        onClear={clearFilters}
+      />
 
       {loading || initializing ? (
         <EmptyState
-          className="mt-6"
           title="Carregando simulações…"
           description="Aguarde um instante."
         />
-      ) : filteredRows.length === 0 ? (
+      ) : rows.length === 0 ? (
         <EmptyState
-          className="mt-6"
           title={
-            rows.length === 0
-              ? 'Nenhuma simulação encontrada'
-              : 'Nenhum resultado para a busca'
+            total === 0 && !hasFilters
+              ? "Nenhuma simulação encontrada"
+              : "Nenhum resultado para a busca"
           }
           description={
-            rows.length === 0
-              ? 'Crie uma nova simulação para começar.'
-              : 'Tente outro termo ou limpe os filtros.'
+            total === 0 && !hasFilters
+              ? "Crie uma nova simulação para começar."
+              : "Tente outro termo ou limpe os filtros."
           }
         />
       ) : (
-        <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {filteredRows.map((row) => (
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {rows.map((row) => (
             <SimulationListCard
               key={row.id}
               row={row}
@@ -201,6 +243,18 @@ export function ListagemSimulacoes() {
           ))}
         </div>
       )}
+
+      <PaginationBar
+        page={page}
+        totalPages={totalPages}
+        rangeStart={rangeStart}
+        rangeEnd={rangeEnd}
+        total={total}
+        loading={loading || initializing}
+        itemLabel="simulações"
+        onPrev={() => setPage((p) => Math.max(1, p - 1))}
+        onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+      />
     </div>
-  )
+  );
 }

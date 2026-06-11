@@ -1,17 +1,31 @@
-import { useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { FileSpreadsheet, Upload, Users } from 'lucide-react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { IconFileSpreadsheet } from '../components/icons'
+import { useLocation } from 'react-router-dom'
+import {
+  ImportacaoLotesSection,
+  ImportacaoStatsBar,
+  ImportacaoUploadPanel,
+} from '../components/importacao/ImportacaoVisuals'
+import { RouteFallback } from '../components/layout/RouteFallback'
+import { AlertMessage } from '../components/ui/AlertMessage'
 import { Button } from '../components/ui/Button'
-import { ConstrutorMapeamento } from './ConstrutorMapeamento'
 import { ModalConfigurarImportacao } from '../components/ModalConfigurarImportacao'
 import { ModalGerenciarFornecedores } from '../components/ModalGerenciarFornecedores'
+import { PageHeader } from '../components/ui/PageHeader'
+import { useSyncPageLoading } from '../contexts/PageLoadingContext'
 import { useAbortableAsync } from '../hooks/useAbortableAsync'
 import {
   fetchFornecedoresAtivos,
   fetchLotesRecentes,
   processLoteComTemplate,
 } from '../services/produtoImportacaoService'
+
+const ConstrutorMapeamento = lazy(() =>
+  import('./ConstrutorMapeamento').then((m) => ({
+    default: m.ConstrutorMapeamento,
+  })),
+)
 
 const ACCEPTED_MIME = {
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
@@ -24,44 +38,7 @@ function isAcceptedSpreadsheet(file) {
   return name.endsWith('.xlsx') || name.endsWith('.csv') || name.endsWith('.xls')
 }
 
-function formatLoteDate(iso) {
-  return new Date(iso).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function statusBadgeClass(status) {
-  switch (status) {
-    case 'processando':
-      return 'bg-gray-100 text-gray-800 ring-gray-200'
-    case 'aguardando_validacao':
-      return 'bg-amber-100 text-amber-900 ring-amber-200'
-    case 'concluido':
-      return 'bg-emerald-100 text-emerald-800 ring-emerald-200'
-    default:
-      return 'bg-slate-100 text-slate-700 ring-slate-200'
-  }
-}
-
-function statusLabel(status) {
-  switch (status) {
-    case 'processando':
-      return 'Processando'
-    case 'aguardando_validacao':
-      return 'Aguardando validação'
-    case 'concluido':
-      return 'Concluído'
-    default:
-      return status
-  }
-}
-
 export function ImportacaoProdutos() {
-  const navigate = useNavigate()
   const location = useLocation()
   const successFromRoute = location.state?.successMessage
 
@@ -75,8 +52,9 @@ export function ImportacaoProdutos() {
   const [configOpen, setConfigOpen] = useState(false)
   const [fornecedoresOpen, setFornecedoresOpen] = useState(false)
 
-  // Quando preenchido, renderiza o construtor de mapeamento inline.
   const [mapeamentoSession, setMapeamentoSession] = useState(null)
+
+  useSyncPageLoading(listLoading)
 
   const loadLists = useCallback(async (isActive) => {
     setListLoading(true)
@@ -109,6 +87,20 @@ export function ImportacaoProdutos() {
       await loadLists(isActive)
     },
     [loadLists],
+  )
+
+  const pendingCount = useMemo(
+    () =>
+      lotes.filter(
+        (lote) =>
+          lote.status === 'aguardando_validacao' || lote.status === 'processando',
+      ).length,
+    [lotes],
+  )
+
+  const completedCount = useMemo(
+    () => lotes.filter((lote) => lote.status === 'concluido').length,
+    [lotes],
   )
 
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
@@ -179,158 +171,85 @@ export function ImportacaoProdutos() {
 
   if (mapeamentoSession) {
     return (
-      <div className="w-full py-6">
-        <ConstrutorMapeamento
-          file={mapeamentoSession.file}
-          fornecedorId={mapeamentoSession.fornecedorId}
-          fornecedorNome={mapeamentoSession.fornecedorNome}
-          onBack={handleMapeamentoBack}
-          onComplete={handleMapeamentoComplete}
-        />
+      <div className="w-full min-w-0 space-y-4 sm:space-y-6">
+        <Suspense fallback={<RouteFallback />}>
+          <ConstrutorMapeamento
+            file={mapeamentoSession.file}
+            fornecedorId={mapeamentoSession.fornecedorId}
+            fornecedorNome={mapeamentoSession.fornecedorNome}
+            onBack={handleMapeamentoBack}
+            onComplete={handleMapeamentoComplete}
+          />
+        </Suspense>
       </div>
     )
   }
 
-  const dropzoneClass = [
-    'flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors',
-    isDragAccept || isDragActive
-      ? 'border-primary-500 bg-primary-50/60'
-      : 'border-gray-300 bg-gray-50 hover:border-primary-400 hover:bg-primary-50/30',
-    listLoading ? 'pointer-events-none opacity-60' : '',
-  ].join(' ')
-
   return (
-    <div className="w-full py-6">
-      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-sm font-medium uppercase tracking-wider text-primary-700">
-            Syagri
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-            Lançamento de Produtos
-          </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Importe planilhas, valide lotes e publique no catálogo oficial.
+    <div className="w-full min-w-0 space-y-4 sm:space-y-6">
+      <div className="relative overflow-hidden rounded-2xl border border-primary-100/80 bg-gradient-to-br from-primary-50/80 via-white to-sky-50/40 p-4 shadow-sm sm:rounded-[2rem] sm:p-6 lg:p-8">
+        <div
+          className="pointer-events-none absolute -right-8 -top-8 size-28 rounded-full bg-primary-200/30 blur-3xl sm:-right-10 sm:-top-10 sm:size-40"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -bottom-6 left-1/4 size-24 rounded-full bg-sky-200/25 blur-3xl sm:-bottom-8 sm:left-1/3 sm:size-32"
+          aria-hidden
+        />
+
+        <PageHeader
+          eyebrow="Syagri"
+          title="Lançamento de Produtos"
+          description="Importe planilhas, valide lotes e publique no catálogo oficial."
+          actions={
+            <Button
+              type="button"
+              className="w-full sm:w-auto"
+              onClick={() => setFornecedoresOpen(true)}
+            >
+              Fornecedores
+            </Button>
+          }
+          className="relative mb-0"
+        />
+
+        <div className="relative mt-4 flex items-start gap-3 rounded-xl border border-white/80 bg-white/60 p-3 backdrop-blur-sm sm:mt-5 sm:items-center sm:rounded-2xl sm:px-4 sm:py-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-white shadow-sm sm:size-9 sm:rounded-xl">
+            <IconFileSpreadsheet className="size-3.5 sm:size-4" />
+          </span>
+          <p className="min-w-0 text-sm leading-relaxed text-slate-700">
+            {listLoading
+              ? 'Carregando fornecedores e lotes recentes…'
+              : `${fornecedores.length} fornecedor(es) ativo(s) · ${lotes.length} lote(s) recente(s) no histórico.`}
           </p>
         </div>
-        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setFornecedoresOpen(true)}
-          >
-            <Users className="size-4" aria-hidden />
-            Fornecedores
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => navigate('/admin/moedas')}
-          >
-            Gestão de Moedas
-          </Button>
-        </div>
-      </header>
+      </div>
 
       {successMessage ? (
-        <p
-          className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
-          role="status"
-        >
+        <AlertMessage tone="success" role="status">
           {successMessage}
-        </p>
+        </AlertMessage>
       ) : null}
 
-      {loadError ? (
-        <p
-          className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-          role="alert"
-        >
-          {loadError}
-        </p>
-      ) : null}
+      {loadError ? <AlertMessage>{loadError}</AlertMessage> : null}
 
-      <section className="mb-10">
-        <div {...getRootProps({ className: dropzoneClass })}>
-          <input {...getInputProps()} />
-          <div
-            className={[
-              'flex size-14 items-center justify-center rounded-full',
-              isDragActive ? 'bg-primary-100 text-primary-700' : 'bg-white text-slate-500 shadow-sm',
-            ].join(' ')}
-          >
-            {isDragActive ? (
-              <FileSpreadsheet className="size-7" aria-hidden />
-            ) : (
-              <Upload className="size-7" aria-hidden />
-            )}
-          </div>
-          <div>
-            <p className="text-base font-semibold text-slate-900">
-              {isDragActive
-                ? 'Solte a planilha aqui'
-                : 'Arraste e solte sua planilha'}
-            </p>
-            <p className="mt-1 text-sm text-slate-600">
-              ou clique para selecionar · .xlsx, .csv
-            </p>
-          </div>
-        </div>
-      </section>
+      <ImportacaoStatsBar
+        fornecedoresCount={fornecedores.length}
+        lotesCount={lotes.length}
+        pendingCount={pendingCount}
+        completedCount={completedCount}
+        loading={listLoading}
+      />
 
-      <section>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">
-          Lotes recentes
-        </h2>
+      <ImportacaoUploadPanel
+        getRootProps={getRootProps}
+        getInputProps={getInputProps}
+        isDragActive={isDragActive}
+        isDragAccept={isDragAccept}
+        disabled={listLoading}
+      />
 
-        {listLoading ? (
-          <div className="flex min-h-[8rem] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white">
-            <p className="text-sm text-slate-600">Carregando lotes…</p>
-          </div>
-        ) : lotes.length === 0 ? (
-          <div className="flex min-h-[8rem] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white">
-            <p className="text-sm text-slate-600">
-              Nenhum lote importado ainda.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {lotes.map((lote) => (
-              <article
-                key={lote.id}
-                className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                      Data
-                    </p>
-                    <p className="mt-0.5 text-sm font-medium text-slate-900">
-                      {formatLoteDate(lote.data_upload)}
-                    </p>
-                  </div>
-                  <span
-                    className={[
-                      'inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset',
-                      statusBadgeClass(lote.status),
-                    ].join(' ')}
-                  >
-                    {statusLabel(lote.status)}
-                  </span>
-                </div>
-                <div className="mt-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                    Fornecedor
-                  </p>
-                  <p className="mt-0.5 truncate text-sm font-semibold text-slate-900">
-                    {lote.fornecedor_nome}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+      <ImportacaoLotesSection lotes={lotes} loading={listLoading} />
 
       <ModalConfigurarImportacao
         open={configOpen}

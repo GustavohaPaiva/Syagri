@@ -1,27 +1,26 @@
-import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { SidebarUserMenu } from '../components/layout/SidebarUserMenu'
-import { ProfileModal } from '../components/layout/ProfileModal'
+import { useEffect, useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { PageTransition } from "../components/layout/PageTransition";
+import { SidebarUserMenu } from "../components/layout/SidebarUserMenu";
+import { ProfileModal } from "../components/layout/ProfileModal";
 import {
-  IconBell,
+  // IconBell,
   IconChevronsLeft,
   IconClipboardList,
   IconLayoutDashboard,
   IconLeaf,
   IconPackage,
   IconPanelLeft,
-  IconShield,
-  IconSliders,
+  //IconSliders,
   IconTruck,
   IconUser,
   IconUsers,
-} from '../components/icons'
-import { useAuth } from '../hooks/useAuth'
-import { useAbortableAsync } from '../hooks/useAbortableAsync'
-import { fetchUnreadNotificationCount } from '../services/notificationService'
-import { supabase } from '../services/supabase'
+} from "../components/icons";
+import { useAuth } from "../hooks/useAuth";
+import { fetchUnreadNotificationCount } from "../services/notificationService";
+import { supabase } from "../services/supabase";
 
-const COLLAPSE_STORAGE_KEY = 'syagri:sidebar-collapsed'
+const COLLAPSE_STORAGE_KEY = "syagri:sidebar-collapsed";
 
 function MenuIcon() {
   return (
@@ -41,7 +40,7 @@ function MenuIcon() {
       <path d="M4 12h16" />
       <path d="M4 18h16" />
     </svg>
-  )
+  );
 }
 
 function CloseIcon() {
@@ -61,103 +60,138 @@ function CloseIcon() {
       <path d="M18 6 6 18" />
       <path d="m6 6 12 12" />
     </svg>
-  )
+  );
 }
 
 function navItemsForRole(role) {
   const shared = [
-    { to: '/notificacoes', label: 'Notificações', icon: IconBell },
-    { to: '/frete', label: 'Fretes', icon: IconTruck },
-  ]
+    // Notificações
+    //{ to: "/notificacoes", label: "Notificações", icon: IconBell },
+  ];
 
-  if (role === 'gestor') {
+  if (role === "gestor") {
     return [
-      { to: '/gestor', label: 'Painel do Gestor', icon: IconShield },
-      { to: '/simulacoes', label: 'Todas Simulações', icon: IconClipboardList },
-      { to: '/clientes', label: 'Clientes', icon: IconUser },
+      // Importação de Produtos
+      {
+        to: "/admin/importacao",
+        label: "Lançamento de Produtos",
+        icon: IconPackage,
+      },
+
+      // Clientes
+      { to: "/clientes", label: "Clientes", icon: IconUser },
+
+      // Simulações
+      { to: "/simulacoes", label: "Todas Simulações", icon: IconClipboardList },
+
+      // Fretes
+      { to: "/frete", label: "Fretes", icon: IconTruck },
+
+      // Consultores
+      {
+        to: "/admin/consultores",
+        label: "Gestão de Consultores",
+        icon: IconUsers,
+      },
+
+      // Dashboard
+      //{ to: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
+
+      // Parâmetros
+      //{ to: "/parametros", label: "Parâmetros", icon: IconSliders },
       ...shared,
-      { to: '/admin/consultores', label: 'Gestão de Consultores', icon: IconUsers },
-      { to: '/admin/importacao', label: 'Lançamento de Produtos', icon: IconPackage },
-      { to: '/parametros', label: 'Parâmetros', icon: IconSliders },
-    ]
+    ];
   }
   return [
-    { to: '/dashboard', label: 'Dashboard', icon: IconLayoutDashboard },
-    { to: '/simulacoes', label: 'Minhas Simulações', icon: IconClipboardList },
-    { to: '/clientes', label: 'Clientes', icon: IconUser },
+    { to: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
+    { to: "/simulacoes", label: "Minhas Simulações", icon: IconClipboardList },
+    { to: "/clientes", label: "Clientes", icon: IconUser },
     ...shared,
-  ]
+  ];
 }
 
 function cargoLabel(role) {
-  if (role === 'gestor') return 'Gestor'
-  if (role === 'consultor') return 'Consultor'
-  return '—'
+  if (role === "gestor") return "Gestor";
+  if (role === "consultor") return "Consultor";
+  return "—";
 }
 
 function readAvatarUrl(metadata) {
-  const url = metadata?.avatar_url
-  return typeof url === 'string' && url.trim().length > 0 ? url.trim() : null
+  const url = metadata?.avatar_url;
+  return typeof url === "string" && url.trim().length > 0 ? url.trim() : null;
 }
 
 export function MainLayout() {
-  const { profile, user, role, clearAuth } = useAuth()
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
+  const { profile, user, role, clearAuth } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return window.localStorage.getItem(COLLAPSE_STORAGE_KEY) === '1'
-  })
-  const [unreadNotifications, setUnreadNotifications] = useState(0)
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(COLLAPSE_STORAGE_KEY) === "1";
+  });
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
-  const pathKey = `${location.pathname}${location.search}`
-  const [lastPathKey, setLastPathKey] = useState(pathKey)
+  const pathKey = `${location.pathname}${location.search}`;
+  const [lastPathKey, setLastPathKey] = useState(pathKey);
 
   if (pathKey !== lastPathKey) {
-    setLastPathKey(pathKey)
-    if (mobileOpen) setMobileOpen(false)
+    setLastPathKey(pathKey);
+    if (mobileOpen) setMobileOpen(false);
   }
 
   useEffect(() => {
-    window.localStorage.setItem(COLLAPSE_STORAGE_KEY, collapsed ? '1' : '0')
-  }, [collapsed])
+    window.localStorage.setItem(COLLAPSE_STORAGE_KEY, collapsed ? "1" : "0");
+  }, [collapsed]);
 
-  useAbortableAsync(
-    async (_signal, isActive) => {
-      if (!user?.id || !role) {
-        if (!isActive()) return
-        setUnreadNotifications(0)
-        return
-      }
+  useEffect(() => {
+    if (!user?.id || !role) {
+      return undefined;
+    }
 
-      const result = await fetchUnreadNotificationCount()
-      if (!isActive()) return
-      if (result.ok) setUnreadNotifications(result.count)
-    },
-    [user, role, location.pathname],
-    Boolean(user?.id) && Boolean(role),
-  )
+    let cancelled = false;
+
+    async function loadCount() {
+      const result = await fetchUnreadNotificationCount();
+      if (!cancelled && result.ok) setUnreadNotifications(result.count);
+    }
+
+    void loadCount();
+    const interval = window.setInterval(loadCount, 60_000);
+
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") void loadCount();
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [user?.id, role]);
 
   async function handleSignOut() {
-    setProfileOpen(false)
+    setProfileOpen(false);
     try {
-      await supabase.auth.signOut()
+      await supabase.auth.signOut();
     } finally {
-      clearAuth()
-      navigate('/login', { replace: true })
+      clearAuth();
+      navigate("/login", { replace: true });
     }
   }
 
   function handleSwitchAccount() {
-    void handleSignOut()
+    void handleSignOut();
   }
 
-  const items = navItemsForRole(role)
-  const displayName = profile?.nome?.trim() || user?.email || 'Usuário'
-  const avatarUrl = readAvatarUrl(user?.user_metadata)
-  const roleLabel = cargoLabel(role)
+  const items = navItemsForRole(role);
+  const displayName = profile?.nome?.trim() || user?.email || "Usuário";
+  const avatarUrl = readAvatarUrl(user?.user_metadata);
+  const roleLabel = cargoLabel(role);
+  const effectiveUnreadNotifications =
+    user?.id && role ? unreadNotifications : 0;
 
   return (
     <div className="h-svh overflow-hidden bg-slate-50">
@@ -173,36 +207,36 @@ export function MainLayout() {
       <div className="flex h-full">
         <aside
           className={[
-            'sidebar-shell fixed inset-y-0 left-0 z-40 flex h-full w-64 shrink-0 flex-col border-r border-slate-200 bg-white',
-            'lg:sticky lg:top-0 lg:z-auto lg:translate-x-0',
-            collapsed ? 'lg:w-[3.625rem]' : 'lg:w-60',
-            mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-          ].join(' ')}
+            "sidebar-shell fixed inset-y-0 left-0 z-40 flex h-full w-64 shrink-0 flex-col border-r border-slate-200 bg-white",
+            "lg:sticky lg:top-0 lg:z-auto lg:translate-x-0",
+            collapsed ? "lg:w-[3.625rem]" : "lg:w-60",
+            mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+          ].join(" ")}
         >
           <div className="h-px w-full shrink-0 bg-primary-500/20" aria-hidden />
 
           <div
             className={[
-              'flex shrink-0 border-b border-slate-100 px-2.5 py-3',
+              "flex shrink-0 border-b border-slate-100 px-2.5 py-3",
               collapsed
-                ? 'flex-col items-center gap-2'
-                : 'items-center justify-between gap-2 px-3',
-            ].join(' ')}
+                ? "flex-col items-center gap-2"
+                : "items-center justify-between gap-2 px-3",
+            ].join(" ")}
           >
             <div
               className={[
-                'flex min-w-0 items-center',
-                collapsed ? 'justify-center' : 'gap-2.5',
-              ].join(' ')}
+                "flex min-w-0 items-center",
+                collapsed ? "justify-center" : "gap-2.5",
+              ].join(" ")}
             >
               <span className="flex size-8 shrink-0 items-center justify-center rounded-2xl bg-primary-600 text-white">
                 <IconLeaf className="size-4" />
               </span>
               <span
                 className={[
-                  'sidebar-reveal min-w-0',
-                  collapsed ? 'is-collapsed' : 'is-expanded',
-                ].join(' ')}
+                  "sidebar-reveal min-w-0",
+                  collapsed ? "is-collapsed" : "is-expanded",
+                ].join(" ")}
               >
                 <span className="block text-sm font-semibold leading-tight text-slate-900">
                   Syagri
@@ -216,9 +250,9 @@ export function MainLayout() {
             <button
               type="button"
               className="hidden size-8 items-center justify-center rounded-2xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 lg:inline-flex"
-              aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+              aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
               aria-pressed={collapsed}
-              title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+              title={collapsed ? "Expandir menu" : "Recolher menu"}
               onClick={() => setCollapsed((v) => !v)}
             >
               {collapsed ? (
@@ -241,27 +275,29 @@ export function MainLayout() {
           <nav
             id="main-sidebar-nav"
             className={[
-              'flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto py-3',
-              collapsed ? 'px-1.5' : 'px-2.5',
-            ].join(' ')}
+              "flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto py-3",
+              collapsed ? "px-1.5" : "px-2.5",
+            ].join(" ")}
           >
             {items.map((item) => {
-              const Icon = item.icon
+              const Icon = item.icon;
               return (
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  end={item.to === '/dashboard' || item.to === '/gestor'}
+                  end={item.to === "/dashboard"}
                   onClick={() => setMobileOpen(false)}
                   title={collapsed ? item.label : undefined}
                   className={({ isActive }) =>
                     [
-                      'group relative flex items-center rounded-2xl text-sm font-medium transition-colors duration-200',
-                      collapsed ? 'justify-center px-0 py-2' : 'gap-2.5 px-2.5 py-2',
+                      "group relative flex notranslate items-center rounded-2xl text-sm font-medium transition-colors duration-200",
+                      collapsed
+                        ? "justify-center px-0 py-2"
+                        : "gap-2.5 px-2.5 py-2",
                       isActive
-                        ? 'bg-primary-50 text-primary-700'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
-                    ].join(' ')
+                        ? "bg-primary-50 text-primary-700"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                    ].join(" ")
                   }
                 >
                   {({ isActive }) => (
@@ -274,42 +310,49 @@ export function MainLayout() {
                       ) : null}
                       <Icon
                         className={[
-                          'size-[1.125rem] shrink-0 transition-colors',
+                          "size-[1.125rem] shrink-0 transition-colors",
                           isActive
-                            ? 'text-primary-600'
-                            : 'text-slate-400 group-hover:text-slate-600',
-                        ].join(' ')}
+                            ? "text-primary-600"
+                            : "text-slate-400 group-hover:text-slate-600",
+                        ].join(" ")}
                       />
                       <span
                         className={[
-                          'sidebar-reveal truncate',
-                          collapsed ? 'is-collapsed' : 'is-expanded',
-                        ].join(' ')}
+                          "sidebar-reveal truncate",
+                          collapsed ? "is-collapsed" : "is-expanded",
+                        ].join(" ")}
                       >
                         {item.label}
                       </span>
-                      {item.to === '/notificacoes' && unreadNotifications > 0 ? (
+                      {item.to === "/notificacoes" &&
+                      effectiveUnreadNotifications > 0 ? (
                         <span
                           className={[
-                            'inline-flex min-w-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[0.65rem] font-bold text-white',
-                            collapsed ? 'absolute -right-0.5 -top-0.5 size-2 min-w-0 p-0' : 'ml-auto',
-                          ].join(' ')}
+                            "inline-flex min-w-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[0.65rem] font-bold text-white",
+                            collapsed
+                              ? "absolute -right-0.5 -top-0.5 size-2 min-w-0 p-0"
+                              : "ml-auto",
+                          ].join(" ")}
                         >
-                          {collapsed ? null : unreadNotifications > 9 ? '9+' : unreadNotifications}
+                          {collapsed
+                            ? null
+                            : effectiveUnreadNotifications > 9
+                              ? "9+"
+                              : effectiveUnreadNotifications}
                         </span>
                       ) : null}
                     </>
                   )}
                 </NavLink>
-              )
+              );
             })}
           </nav>
 
           <div
             className={[
-              'shrink-0 border-t border-slate-100',
-              collapsed ? 'p-1.5' : 'p-2.5',
-            ].join(' ')}
+              "shrink-0 border-t border-slate-100",
+              collapsed ? "p-1.5" : "p-2.5",
+            ].join(" ")}
           >
             <SidebarUserMenu
               displayName={displayName}
@@ -349,7 +392,7 @@ export function MainLayout() {
           </header>
 
           <main className="relative z-10 min-h-0 flex-1 overflow-y-auto px-[5%] py-4 lg:py-6">
-            <Outlet />
+            <PageTransition />
           </main>
         </div>
       </div>
@@ -358,12 +401,12 @@ export function MainLayout() {
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
         displayName={displayName}
-        email={user?.email ?? ''}
+        email={user?.email ?? ""}
         roleLabel={roleLabel}
         avatarUrl={avatarUrl}
         onSwitchAccount={handleSwitchAccount}
         onSignOut={() => void handleSignOut()}
       />
     </div>
-  )
+  );
 }

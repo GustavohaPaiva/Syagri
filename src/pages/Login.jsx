@@ -38,7 +38,7 @@ const TRUST_ITEMS = [
   { label: "Dados protegidos", icon: IconLeaf },
 ];
 
-const LOGIN_REDIRECT_MS = 820;
+const LOGIN_REDIRECT_MS = 200;
 
 function LoginSuccessTransition({ active }) {
   if (!active) return null;

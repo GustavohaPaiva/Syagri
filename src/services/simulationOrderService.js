@@ -1,10 +1,11 @@
 import { roundMoney } from '../utils/roundMoney';
+import { parseCpfCnpjInput } from '../utils/dataFormatters';
 import { notifyConsultorSimulationDecision } from './notificationService';
 import { supabase } from './supabase';
 
 async function resolveClientId(input) {
     const nome = input.clientName.trim();
-    const cnpj = input.clientCnpjCpf.trim();
+    const cnpj = parseCpfCnpjInput(input.clientCnpjCpf ?? '');
     if (!nome || !cnpj) {
         return { ok: false, error: 'Informe nome e CPF/CNPJ do cliente.' };
     }
@@ -291,6 +292,12 @@ export async function updateSimulationStatus(simulationId, status, options = {})
     return { ok: true };
 }
 export async function fetchSimulationsList(params) {
+    const page = Math.max(1, params.page ?? 1)
+    const pageSize = Math.min(100, Math.max(10, params.pageSize ?? 50))
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    const search = (params.search ?? '').trim()
+
     let q = supabase
         .from('simulations')
         .select(`
@@ -300,24 +307,45 @@ export async function fetchSimulationsList(params) {
       status,
       user_id,
       clients ( nome )
-    `)
-        .order('created_at', { ascending: false });
+    `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to)
+
     if (params.role === 'consultor') {
-        q = q.eq('user_id', params.userId);
+        q = q.eq('user_id', params.userId)
     }
     if (params.statusFilter) {
-        q = q.eq('status', params.statusFilter);
+        q = q.eq('status', params.statusFilter)
     }
-    const { data, error } = await q;
+
+    if (search) {
+        const pattern = `%${search.replace(/[%_,]/g, ' ').trim()}%`
+        if (params.role === 'gestor') {
+            const { data: profs } = await supabase
+                .from('profiles')
+                .select('id')
+                .ilike('nome', pattern)
+            const consultorIds = (profs ?? []).map((p) => p.id)
+            if (consultorIds.length > 0) {
+                q = q.or(`clients.nome.ilike.${pattern},user_id.in.(${consultorIds.join(',')})`)
+            } else {
+                q = q.ilike('clients.nome', pattern)
+            }
+        } else {
+            q = q.ilike('clients.nome', pattern)
+        }
+    }
+
+    const { data, error, count } = await q
     if (error)
-        return { ok: false, error: error.message };
-    const raw = (data ?? []);
+        return { ok: false, error: error.message }
+    const raw = (data ?? [])
     const rows = raw.map((row) => {
-        const rawClient = row.clients;
-        const clientRow = Array.isArray(rawClient) ? rawClient[0] : rawClient;
+        const rawClient = row.clients
+        const clientRow = Array.isArray(rawClient) ? rawClient[0] : rawClient
         const nome = clientRow && typeof clientRow === 'object' && 'nome' in clientRow
             ? String(clientRow.nome ?? '')
-            : '';
+            : ''
         return {
             id: String(row.id),
             created_at: String(row.created_at),
@@ -325,20 +353,20 @@ export async function fetchSimulationsList(params) {
             total_proposta: Number(row.total_proposta),
             status: row.status,
             user_id: String(row.user_id),
-        };
-    });
-    let consultorNomeById = {};
+        }
+    })
+    let consultorNomeById = {}
     if (params.role === 'gestor' && rows.length > 0) {
-        const ids = [...new Set(rows.map((r) => r.user_id))];
+        const ids = [...new Set(rows.map((r) => r.user_id))]
         const { data: profs, error: pErr } = await supabase
             .from('profiles')
             .select('id, nome')
-            .in('id', ids);
+            .in('id', ids)
         if (pErr)
-            return { ok: false, error: pErr.message };
-        consultorNomeById = Object.fromEntries((profs ?? []).map((p) => [String(p.id), String(p.nome)]));
+            return { ok: false, error: pErr.message }
+        consultorNomeById = Object.fromEntries((profs ?? []).map((p) => [String(p.id), String(p.nome)]))
     }
-    return { ok: true, rows, consultorNomeById };
+    return { ok: true, rows, consultorNomeById, total: count ?? 0 }
 }
 
 export async function fetchGestorDashboardStats() {
