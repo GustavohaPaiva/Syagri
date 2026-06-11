@@ -1,0 +1,1 @@
+import{t as e}from"./vendor-react-ClpZ7b2h.js";var t=e();function n(){return(0,t.jsx)(`div`,{className:`w-full`,children:(0,t.jsx)(`h1`,{className:`notranslate`,children:`Notificações`})})}export{n as NotificacoesPage};
