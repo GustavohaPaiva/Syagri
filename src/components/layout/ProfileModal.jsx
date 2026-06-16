@@ -141,7 +141,7 @@ export function ProfileModal({
           <Button
             type="button"
             variant="secondary"
-            className="flex-1"
+            className="w-full shrink-0 sm:flex-1"
             loading={busy}
             onClick={() => fileRef.current?.click()}
           >
@@ -154,7 +154,7 @@ export function ProfileModal({
             <Button
               type="button"
               variant="ghost"
-              className="flex-1 border border-slate-200"
+              className="w-full shrink-0 border border-slate-200 sm:flex-1"
               onClick={() => void handleRemove()}
               disabled={busy}
             >

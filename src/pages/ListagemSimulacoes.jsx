@@ -10,6 +10,7 @@ import { AlertMessage } from "../components/ui/AlertMessage";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
 import { PageHeader } from "../components/ui/PageHeader";
+import { PageInfoBanner } from "../components/ui/InfoStatCard";
 import { PaginationBar } from "../components/ui/PaginationBar";
 import { useSyncPageLoading } from "../contexts/PageLoadingContext";
 import { useAbortableAsync } from "../hooks/useAbortableAsync";
@@ -170,18 +171,13 @@ export function ListagemSimulacoes() {
           className="relative mb-0"
         />
 
-        <div className="relative mt-4 flex items-start gap-3 rounded-xl border border-white/80 bg-white/60 p-3 backdrop-blur-sm sm:mt-5 sm:items-center sm:rounded-2xl sm:px-4 sm:py-3">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-white shadow-sm sm:size-9 sm:rounded-xl">
-            <IconClipboardList className="size-3.5 sm:size-4" />
-          </span>
-          <p className="min-w-0 text-sm leading-relaxed text-slate-700">
-            {loading || initializing
-              ? "Carregando simulações…"
-              : hasFilters
-                ? `${total.toLocaleString("pt-BR")} simulação(ões) encontrada(s) com os filtros atuais.`
-                : `${total.toLocaleString("pt-BR")} simulação(ões) disponível(is) nesta listagem.`}
-          </p>
-        </div>
+        <PageInfoBanner icon={IconClipboardList}>
+          {loading || initializing
+            ? "Carregando simulações…"
+            : hasFilters
+              ? `${total.toLocaleString("pt-BR")} simulação(ões) encontrada(s) com os filtros atuais.`
+              : `${total.toLocaleString("pt-BR")} simulação(ões) disponível(is) nesta listagem.`}
+        </PageInfoBanner>
       </div>
 
       {error ? <AlertMessage>{error}</AlertMessage> : null}

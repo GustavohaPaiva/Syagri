@@ -1,9 +1,11 @@
+import { Link } from 'react-router-dom'
 import {
   IconFileSpreadsheet,
   IconPackage,
   IconUpload,
   IconUsers,
 } from '../icons'
+import { InfoStatCard } from '../ui/InfoStatCard'
 import { EmptyState } from '../ui/EmptyState'
 import {
   formatLoteDate,
@@ -34,9 +36,7 @@ export function ImportacaoStatusBadge({ status, compact = false }) {
 
 export function ImportacaoStatsBar({
   fornecedoresCount,
-  lotesCount,
-  pendingCount,
-  completedCount,
+  produtosCount,
   loading,
 }) {
   const items = [
@@ -48,65 +48,19 @@ export function ImportacaoStatsBar({
       accent: 'text-primary-600 bg-primary-50',
     },
     {
-      label: 'Lotes recentes',
-      value: loading ? '—' : String(lotesCount),
-      hint: 'Últimas importações',
-      icon: IconPackage,
-      accent: 'text-sky-700 bg-sky-50',
-    },
-    {
-      label: 'Aguardando',
-      value: loading ? '—' : String(pendingCount),
-      hint: 'Pendentes de validação',
-      icon: IconFileSpreadsheet,
-      accent: 'text-amber-700 bg-amber-50',
-    },
-    {
-      label: 'Concluídos',
-      value: loading ? '—' : String(completedCount),
-      hint: 'Publicados no catálogo',
+      label: 'Produtos ativos',
+      value: loading ? '—' : String(produtosCount),
+      hint: 'No catálogo oficial',
       icon: IconPackage,
       accent: 'text-emerald-700 bg-emerald-50',
     },
   ]
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {items.map((item) => {
-        const Icon = item.icon
-        return (
-          <div
-            key={item.label}
-            className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-sm sm:rounded-3xl sm:p-4"
-          >
-            <div
-              className="pointer-events-none absolute -right-4 -top-4 size-20 rounded-full bg-gradient-to-br from-primary-100/40 to-transparent blur-2xl"
-              aria-hidden
-            />
-            <div className="relative flex items-start gap-2.5 sm:gap-3">
-              <span
-                className={[
-                  'flex size-9 shrink-0 items-center justify-center rounded-xl sm:size-10 sm:rounded-2xl',
-                  item.accent,
-                ].join(' ')}
-              >
-                <Icon className="size-3.5 sm:size-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                  {item.label}
-                </p>
-                <p className="mt-0.5 truncate text-lg font-semibold tracking-tight text-slate-900 sm:mt-1 sm:text-xl">
-                  {item.value}
-                </p>
-                <p className="mt-0.5 truncate text-xs text-slate-500">
-                  {item.hint}
-                </p>
-              </div>
-            </div>
-          </div>
-        )
-      })}
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {items.map((item) => (
+        <InfoStatCard key={item.label} {...item} />
+      ))}
     </div>
   )
 }
@@ -172,14 +126,11 @@ export function ImportacaoUploadPanel({
 
 export function ImportacaoLoteCard({ lote }) {
   const tone = statusTone(lote.status)
+  const isClickable =
+    lote.status === 'aguardando_validacao' || lote.status === 'concluido'
 
-  return (
-    <article
-      className={[
-        'group overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-br shadow-sm transition-[box-shadow,border-color] hover:border-primary-200 hover:shadow-md sm:rounded-3xl',
-        tone.panel,
-      ].join(' ')}
-    >
+  const content = (
+    <>
       <header className="relative border-b border-white/60 px-4 pb-4 pt-4 sm:px-5 sm:pt-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -206,7 +157,37 @@ export function ImportacaoLoteCard({ lote }) {
         <p className="mt-1 text-sm font-medium text-slate-800">
           {formatLoteDate(lote.data_upload)}
         </p>
+        {isClickable ? (
+          <p className="mt-2 text-xs font-medium text-primary-700">
+            Clique para {lote.status === 'concluido' ? 'ver' : 'revisar'}
+          </p>
+        ) : null}
       </div>
+    </>
+  )
+
+  if (isClickable) {
+    return (
+      <Link
+        to={`/admin/importacao/lote/${lote.id}`}
+        className={[
+          'group block overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-br shadow-sm transition-[box-shadow,border-color] hover:border-primary-200 hover:shadow-md sm:rounded-3xl',
+          tone.panel,
+        ].join(' ')}
+      >
+        {content}
+      </Link>
+    )
+  }
+
+  return (
+    <article
+      className={[
+        'group overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-br shadow-sm sm:rounded-3xl',
+        tone.panel,
+      ].join(' ')}
+    >
+      {content}
     </article>
   )
 }

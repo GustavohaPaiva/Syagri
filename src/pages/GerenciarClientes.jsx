@@ -10,6 +10,7 @@ import { IconUsers } from "../components/icons";
 import { AlertMessage } from "../components/ui/AlertMessage";
 import { Button } from "../components/ui/Button";
 import { PageHeader } from "../components/ui/PageHeader";
+import { PageInfoBanner } from "../components/ui/InfoStatCard";
 import { PaginationBar } from "../components/ui/PaginationBar";
 import { useSyncPageLoading } from "../contexts/PageLoadingContext";
 import { useAbortableAsync } from "../hooks/useAbortableAsync";
@@ -129,18 +130,13 @@ export function GerenciarClientes() {
           className="relative mb-0"
         />
 
-        <div className="relative mt-4 flex items-start gap-3 rounded-xl border border-white/80 bg-white/60 p-3 backdrop-blur-sm sm:mt-5 sm:items-center sm:rounded-2xl sm:px-4 sm:py-3">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-white shadow-sm sm:size-9 sm:rounded-xl">
-            <IconUsers className="size-3.5 sm:size-4" />
-          </span>
-          <p className="min-w-0 text-sm leading-relaxed text-slate-700">
-            {loading
-              ? "Carregando carteira de clientes…"
-              : hasFilters
-                ? `${total.toLocaleString("pt-BR")} cliente(s) encontrado(s) na busca.`
-                : `${totalCount.toLocaleString("pt-BR")} cliente(s) cadastrado(s) na operação.`}
-          </p>
-        </div>
+        <PageInfoBanner icon={IconUsers}>
+          {loading
+            ? "Carregando carteira de clientes…"
+            : hasFilters
+              ? `${total.toLocaleString("pt-BR")} cliente(s) encontrado(s) na busca.`
+              : `${totalCount.toLocaleString("pt-BR")} cliente(s) cadastrado(s) na operação.`}
+        </PageInfoBanner>
       </div>
 
       {loadError ? <AlertMessage>{loadError}</AlertMessage> : null}

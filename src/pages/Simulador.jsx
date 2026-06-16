@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
-import { useAlertDialog } from "../contexts/AlertDialogProvider";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useCallback, useMemo, useState } from 'react'
+import { useAlertDialog } from '../contexts/AlertDialogProvider'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ModalClienteForm } from "../components/clientes/ModalClienteForm";
 import {
   SIMULADOR_SECTION_ICONS,
@@ -18,6 +18,7 @@ import { FormattedInput } from "../components/ui/FormattedInput";
 import { Input } from "../components/ui/Input";
 import { PageBackLink } from "../components/ui/PageBackLink";
 import { PageHeader } from "../components/ui/PageHeader";
+import { PageInfoBanner } from "../components/ui/InfoStatCard";
 import { Select } from "../components/ui/Select";
 import {
   FREIGHT_TYPES,
@@ -35,6 +36,10 @@ import {
   searchClients,
 } from "../services/simulationOrderService";
 import { notifyGestoresSimulationPending } from "../services/notificationService";
+import {
+  fetchCatalogoSimulador,
+  getFallbackCatalog,
+} from "../services/produtoCatalogoService";
 import { formatBRL } from "../utils/money";
 import { displayCpfCnpj, validateCpfCnpj } from "../utils/dataFormatters";
 
@@ -42,7 +47,10 @@ export function Simulador() {
   const [searchParams] = useSearchParams();
   const simulationId = searchParams.get("simulationId");
   const { role } = useAuth();
-  const sim = useSimulation({ role });
+  const [catalog, setCatalog] = useState(getFallbackCatalog());
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogSource, setCatalogSource] = useState("fallback");
+  const sim = useSimulation({ role, catalog });
   const navigate = useNavigate();
   const { showAlert } = useAlertDialog();
 
@@ -64,6 +72,28 @@ export function Simulador() {
   const [launchError, setLaunchError] = useState(null);
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [convertAfterClientSave, setConvertAfterClientSave] = useState(false);
+
+  const loadCatalog = useCallback(async (quarter, isActive) => {
+    setCatalogLoading(true);
+    const res = await fetchCatalogoSimulador({ quarter: quarter || undefined });
+    if (isActive && !isActive()) return;
+    setCatalogLoading(false);
+
+    if (res.ok && res.rows.length > 0) {
+      setCatalog(res.rows);
+      setCatalogSource("oficial");
+    } else {
+      setCatalog(getFallbackCatalog());
+      setCatalogSource("fallback");
+    }
+  }, []);
+
+  useAbortableAsync(
+    async (_signal, isActive) => {
+      await loadCatalog(sim.quarter, isActive);
+    },
+    [sim.quarter, loadCatalog],
+  );
 
   useAbortableAsync(
     async (_signal, isActive) => {
@@ -291,14 +321,16 @@ export function Simulador() {
           className="relative mb-0"
         />
 
-        <div className="relative mt-4 flex items-start gap-3 rounded-xl border border-white/80 bg-white/60 p-3 backdrop-blur-sm sm:mt-5 sm:items-center sm:rounded-2xl sm:px-4 sm:py-3">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-white shadow-sm sm:size-9 sm:rounded-xl">
-            <IconClipboardList className="size-3.5 sm:size-4" />
-          </span>
-          <p className="min-w-0 text-sm leading-relaxed text-slate-700">
-            {heroContext}
-          </p>
-        </div>
+        <PageInfoBanner icon={IconClipboardList}>
+          {heroContext}
+          {catalogLoading
+            ? ' · Atualizando catálogo de produtos…'
+            : catalogSource === 'fallback'
+              ? ' · Catálogo de demonstração (lance produtos em Lançamento de Produtos).'
+              : sim.quarter
+                ? ` · ${catalog.length} produto(s) do quarter ${sim.quarter}.`
+                : ` · ${catalog.length} produto(s) no catálogo oficial.`}
+        </PageInfoBanner>
       </div>
 
       {sim.actionBanner ? (

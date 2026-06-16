@@ -151,14 +151,11 @@ export function ConstrutorMapeamento(props = {}) {
     const successMessage = `Layout salvo e lote processado (${result.rowsProcessed} linhas).`
 
     if (inline) {
-      onComplete?.({ successMessage, rowsProcessed: result.rowsProcessed })
+      onComplete?.({ successMessage, loteId: result.loteId, rowsProcessed: result.rowsProcessed })
       return
     }
 
-    navigate('/admin/importacao', {
-      replace: true,
-      state: { successMessage },
-    })
+    navigate(`/admin/importacao/lote/${result.loteId}`, { replace: true })
   }
 
   return (

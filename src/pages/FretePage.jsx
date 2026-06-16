@@ -7,6 +7,7 @@ import { IconTruck } from "../components/icons";
 import { AlertMessage } from "../components/ui/AlertMessage";
 import { Button } from "../components/ui/Button";
 import { PageHeader } from "../components/ui/PageHeader";
+import { PageInfoBanner } from "../components/ui/InfoStatCard";
 import { useSyncPageLoading } from "../contexts/PageLoadingContext";
 import { useAbortableAsync } from "../hooks/useAbortableAsync";
 import { useAuth } from "../hooks/useAuth";
@@ -211,18 +212,13 @@ export function FretePage() {
           className="relative mb-0"
         />
 
-        <div className="relative mt-4 flex items-center gap-3 rounded-xl border border-white/80 bg-white/60 p-3 backdrop-blur-sm sm:mt-5 sm:items-center sm:rounded-2xl sm:px-4 sm:py-3">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-white shadow-sm sm:size-9 sm:rounded-xl">
-            <IconTruck className="size-3.5 sm:size-4" />
-          </span>
-          <p className="min-w-0 text-sm leading-relaxed text-slate-700">
-            {loading
-              ? "Carregando catálogo de fretes…"
-              : hasFilters
-                ? `${total.toLocaleString("pt-BR")} rota(s) encontrada(s) com os filtros aplicados.`
-                : `${total.toLocaleString("pt-BR")} rotas disponíveis no catálogo.`}
-          </p>
-        </div>
+        <PageInfoBanner icon={IconTruck}>
+          {loading
+            ? "Carregando catálogo de fretes…"
+            : hasFilters
+              ? `${total.toLocaleString("pt-BR")} rota(s) encontrada(s) com os filtros aplicados.`
+              : `${total.toLocaleString("pt-BR")} rotas disponíveis no catálogo.`}
+        </PageInfoBanner>
       </div>
 
       {error ? <AlertMessage>{error}</AlertMessage> : null}

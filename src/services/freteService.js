@@ -1,3 +1,4 @@
+import { FRETE_ORIGEM_VALUES } from '../constants/fretes'
 import { normalizeFreteLocation, normalizeFreteValor } from '../utils/normalizeFrete'
 import { supabase } from './supabase'
 
@@ -22,6 +23,13 @@ function parseDbError(error) {
   return error.message
 }
 
+function validateFreteOrigem(origem) {
+  if (!FRETE_ORIGEM_VALUES.includes(origem)) {
+    return { ok: false, error: 'Selecione uma origem de frete válida.' }
+  }
+  return { ok: true }
+}
+
 export async function fetchFretesList(params = {}) {
   const page = Math.max(1, params.page ?? 1)
   const pageSize = Math.min(100, Math.max(10, params.pageSize ?? 50))
@@ -33,6 +41,7 @@ export async function fetchFretesList(params = {}) {
     .select('id, origem, destino, valor, ativo, created_at, updated_at', {
       count: 'exact',
     })
+    .neq('origem', 'FOB')
     .order('origem', { ascending: true })
     .order('destino', { ascending: true })
     .range(from, to)
@@ -94,6 +103,8 @@ export async function createFrete(input) {
   if (!origem || !destino) {
     return { ok: false, error: 'Informe origem e destino.' }
   }
+  const origemCheck = validateFreteOrigem(origem)
+  if (!origemCheck.ok) return origemCheck
   if (valor == null) {
     return { ok: false, error: 'Informe um valor válido (R$).' }
   }
@@ -122,6 +133,8 @@ export async function updateFrete(id, input) {
   if (!origem || !destino) {
     return { ok: false, error: 'Informe origem e destino.' }
   }
+  const origemCheck = validateFreteOrigem(origem)
+  if (!origemCheck.ok) return origemCheck
   if (valor == null) {
     return { ok: false, error: 'Informe um valor válido (R$).' }
   }

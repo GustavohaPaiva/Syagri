@@ -54,3 +54,41 @@ export function fornecedorInitial(nome) {
   const trimmed = (nome ?? '').trim()
   return trimmed ? trimmed.charAt(0).toUpperCase() : '?'
 }
+
+export function statusLinhaLabel(status) {
+  switch (status) {
+    case 'novo':
+      return 'Novo'
+    case 'atualizacao':
+      return 'Atualização'
+    case 'erro':
+      return 'Erro'
+    default:
+      return status
+  }
+}
+
+export function statusLinhaTone(status) {
+  switch (status) {
+    case 'novo':
+      return {
+        badge: 'bg-emerald-50 text-emerald-800 ring-emerald-200/80',
+        dot: 'bg-emerald-500',
+      }
+    case 'atualizacao':
+      return {
+        badge: 'bg-sky-50 text-sky-800 ring-sky-200/80',
+        dot: 'bg-sky-500',
+      }
+    case 'erro':
+      return {
+        badge: 'bg-red-50 text-red-800 ring-red-200/80',
+        dot: 'bg-red-500',
+      }
+    default:
+      return {
+        badge: 'bg-slate-100 text-slate-700 ring-slate-200/80',
+        dot: 'bg-slate-400',
+      }
+  }
+}

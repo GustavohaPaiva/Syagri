@@ -119,10 +119,16 @@ export function ModalConfigurarImportacao({
             variant="secondary"
             onClick={onClose}
             disabled={submitting}
+            className="w-full shrink-0 sm:w-auto"
           >
             Cancelar
           </Button>
-          <Button type="button" onClick={handleAdvance} loading={submitting}>
+          <Button
+            type="button"
+            onClick={handleAdvance}
+            loading={submitting}
+            className="w-full shrink-0 sm:w-auto"
+          >
             Avançar
           </Button>
         </div>

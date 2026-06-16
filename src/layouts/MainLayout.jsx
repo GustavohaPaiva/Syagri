@@ -77,6 +77,16 @@ function navItemsForRole(role) {
         label: "Lançamento de Produtos",
         icon: IconPackage,
       },
+      {
+        to: "/admin/produtos",
+        label: "Produtos",
+        icon: IconLeaf,
+      },
+      {
+        to: "/admin/fornecedores",
+        label: "Fornecedores",
+        icon: IconUsers,
+      },
 
       // Clientes
       { to: "/clientes", label: "Clientes", icon: IconUser },

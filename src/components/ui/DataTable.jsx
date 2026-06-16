@@ -63,7 +63,9 @@ export function DataTable({
                 key={getRowKey(row)}
                 className="transition-colors hover:bg-slate-50/70"
               >
-                {columns.map((col) => (
+                {columns.map((col) => {
+                  const renderCell = col.render ?? col.cell
+                  return (
                   <td
                     key={col.key}
                     className={[
@@ -78,9 +80,9 @@ export function DataTable({
                       .filter(Boolean)
                       .join(' ')}
                   >
-                    {col.render(row)}
+                    {renderCell ? renderCell(row) : null}
                   </td>
-                ))}
+                )})}
               </tr>
             ))
           )}

@@ -14,7 +14,7 @@ export function ModalFormFooter({
         type="button"
         variant="secondary"
         disabled={loading || disabled}
-        className="flex-1"
+        className="w-full shrink-0 sm:w-auto sm:flex-1"
         onClick={onCancel}
       >
         {cancelLabel}
@@ -24,7 +24,7 @@ export function ModalFormFooter({
         form={formId}
         loading={loading}
         disabled={disabled}
-        className="flex-1"
+        className="w-full shrink-0 sm:w-auto sm:flex-1"
       >
         {submitLabel}
       </Button>

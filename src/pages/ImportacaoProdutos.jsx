@@ -1,24 +1,25 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { IconFileSpreadsheet } from '../components/icons'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
-  ImportacaoLotesSection,
   ImportacaoStatsBar,
   ImportacaoUploadPanel,
 } from '../components/importacao/ImportacaoVisuals'
 import { RouteFallback } from '../components/layout/RouteFallback'
+import { ModalProdutoOficialForm } from '../components/produtos/ModalProdutoOficialForm'
 import { AlertMessage } from '../components/ui/AlertMessage'
 import { Button } from '../components/ui/Button'
 import { ModalConfigurarImportacao } from '../components/ModalConfigurarImportacao'
-import { ModalGerenciarFornecedores } from '../components/ModalGerenciarFornecedores'
 import { PageHeader } from '../components/ui/PageHeader'
+import { PageInfoBanner } from '../components/ui/InfoStatCard'
 import { useSyncPageLoading } from '../contexts/PageLoadingContext'
 import { useAbortableAsync } from '../hooks/useAbortableAsync'
 import {
   fetchFornecedoresAtivos,
-  fetchLotesRecentes,
+  fetchProdutosTotalCount,
   processLoteComTemplate,
+  upsertProdutoOficialManual,
 } from '../services/produtoImportacaoService'
 
 const ConstrutorMapeamento = lazy(() =>
@@ -40,17 +41,19 @@ function isAcceptedSpreadsheet(file) {
 
 export function ImportacaoProdutos() {
   const location = useLocation()
+  const navigate = useNavigate()
   const successFromRoute = location.state?.successMessage
 
   const [fornecedores, setFornecedores] = useState([])
-  const [lotes, setLotes] = useState([])
+  const [produtosAtivosCount, setProdutosAtivosCount] = useState(0)
   const [loadError, setLoadError] = useState(null)
   const [listLoading, setListLoading] = useState(true)
   const [successMessage, setSuccessMessage] = useState(successFromRoute ?? null)
+  const [actionError, setActionError] = useState(null)
 
   const [pendingFile, setPendingFile] = useState(null)
   const [configOpen, setConfigOpen] = useState(false)
-  const [fornecedoresOpen, setFornecedoresOpen] = useState(false)
+  const [produtoModalOpen, setProdutoModalOpen] = useState(false)
 
   const [mapeamentoSession, setMapeamentoSession] = useState(null)
 
@@ -60,9 +63,9 @@ export function ImportacaoProdutos() {
     setListLoading(true)
     setLoadError(null)
 
-    const [fornRes, lotesRes] = await Promise.all([
+    const [fornRes, produtosRes] = await Promise.all([
       fetchFornecedoresAtivos(),
-      fetchLotesRecentes(),
+      fetchProdutosTotalCount({ ativo: true }),
     ])
 
     if (!isActive || isActive()) {
@@ -72,13 +75,13 @@ export function ImportacaoProdutos() {
         setLoadError(fornRes.error)
         return
       }
-      if (!lotesRes.ok) {
-        setLoadError(lotesRes.error)
+      if (!produtosRes.ok) {
+        setLoadError(produtosRes.error)
         return
       }
 
       setFornecedores(fornRes.rows)
-      setLotes(lotesRes.rows)
+      setProdutosAtivosCount(produtosRes.total)
     }
   }, [])
 
@@ -87,20 +90,6 @@ export function ImportacaoProdutos() {
       await loadLists(isActive)
     },
     [loadLists],
-  )
-
-  const pendingCount = useMemo(
-    () =>
-      lotes.filter(
-        (lote) =>
-          lote.status === 'aguardando_validacao' || lote.status === 'processando',
-      ).length,
-    [lotes],
-  )
-
-  const completedCount = useMemo(
-    () => lotes.filter((lote) => lote.status === 'concluido').length,
-    [lotes],
   )
 
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
@@ -136,6 +125,7 @@ export function ImportacaoProdutos() {
   async function handleAdvanceExisting({ fornecedorId, template }) {
     const res = await processLoteComTemplate({
       fornecedorId,
+      templateId: template?.id,
       templateConfig: template?.config_json,
       file: pendingFile,
     })
@@ -145,10 +135,8 @@ export function ImportacaoProdutos() {
     }
 
     closeConfig()
-    setSuccessMessage(
-      `Lote enviado para importação (${res.rowsProcessed} linha(s)).`,
-    )
     await loadLists()
+    navigate(`/admin/importacao/lote/${res.loteId}`)
     return { ok: true }
   }
 
@@ -162,11 +150,37 @@ export function ImportacaoProdutos() {
     setPendingFile(null)
   }
 
-  async function handleMapeamentoComplete({ successMessage: msg }) {
+  async function handleMapeamentoComplete({ loteId }) {
     setMapeamentoSession(null)
     setPendingFile(null)
-    setSuccessMessage(msg)
     await loadLists()
+    if (loteId) {
+      navigate(`/admin/importacao/lote/${loteId}`)
+    }
+  }
+
+  async function handleSaveProduto(payload) {
+    setActionError(null)
+    if (!payload.fornecedorId) {
+      return { ok: false, error: 'Selecione um fornecedor.' }
+    }
+
+    const res = await upsertProdutoOficialManual({
+      fornecedorId: payload.fornecedorId,
+      sku_fornecedor: payload.sku_fornecedor,
+      nome: payload.nome,
+      cultura: payload.cultura,
+      quarter: payload.quarter,
+      preco_original: payload.preco_original,
+      moeda_origem: payload.moeda_origem,
+    })
+
+    if (res.ok) {
+      setSuccessMessage('Produto lançado com sucesso.')
+      await loadLists()
+    }
+
+    return res
   }
 
   if (mapeamentoSession) {
@@ -200,29 +214,24 @@ export function ImportacaoProdutos() {
         <PageHeader
           eyebrow="Syagri"
           title="Lançamento de Produtos"
-          description="Importe planilhas, valide lotes e publique no catálogo oficial."
+          description="Importe planilhas ou lance produtos manualmente no catálogo oficial."
           actions={
             <Button
               type="button"
               className="w-full sm:w-auto"
-              onClick={() => setFornecedoresOpen(true)}
+              onClick={() => setProdutoModalOpen(true)}
             >
-              Fornecedores
+              Lançar produto
             </Button>
           }
           className="relative mb-0"
         />
 
-        <div className="relative mt-4 flex items-start gap-3 rounded-xl border border-white/80 bg-white/60 p-3 backdrop-blur-sm sm:mt-5 sm:items-center sm:rounded-2xl sm:px-4 sm:py-3">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-white shadow-sm sm:size-9 sm:rounded-xl">
-            <IconFileSpreadsheet className="size-3.5 sm:size-4" />
-          </span>
-          <p className="min-w-0 text-sm leading-relaxed text-slate-700">
-            {listLoading
-              ? 'Carregando fornecedores e lotes recentes…'
-              : `${fornecedores.length} fornecedor(es) ativo(s) · ${lotes.length} lote(s) recente(s) no histórico.`}
-          </p>
-        </div>
+        <PageInfoBanner icon={IconFileSpreadsheet}>
+          {listLoading
+            ? 'Carregando dados de importação…'
+            : `${fornecedores.length} fornecedor(es) ativo(s) · ${produtosAtivosCount} produto(s) ativo(s) no catálogo.`}
+        </PageInfoBanner>
       </div>
 
       {successMessage ? (
@@ -232,12 +241,11 @@ export function ImportacaoProdutos() {
       ) : null}
 
       {loadError ? <AlertMessage>{loadError}</AlertMessage> : null}
+      {actionError ? <AlertMessage>{actionError}</AlertMessage> : null}
 
       <ImportacaoStatsBar
         fornecedoresCount={fornecedores.length}
-        lotesCount={lotes.length}
-        pendingCount={pendingCount}
-        completedCount={completedCount}
+        produtosCount={produtosAtivosCount}
         loading={listLoading}
       />
 
@@ -249,8 +257,6 @@ export function ImportacaoProdutos() {
         disabled={listLoading}
       />
 
-      <ImportacaoLotesSection lotes={lotes} loading={listLoading} />
-
       <ModalConfigurarImportacao
         open={configOpen}
         onClose={closeConfig}
@@ -260,12 +266,12 @@ export function ImportacaoProdutos() {
         onCreateNew={handleCreateNew}
       />
 
-      <ModalGerenciarFornecedores
-        open={fornecedoresOpen}
-        onClose={() => setFornecedoresOpen(false)}
-        onChanged={() => {
-          void loadLists()
-        }}
+      <ModalProdutoOficialForm
+        open={produtoModalOpen}
+        onClose={() => setProdutoModalOpen(false)}
+        title="Lançar produto"
+        fornecedores={fornecedores}
+        onSave={handleSaveProduto}
       />
     </div>
   )

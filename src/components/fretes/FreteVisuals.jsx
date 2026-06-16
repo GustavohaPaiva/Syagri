@@ -1,4 +1,5 @@
 import { IconDollarSign, IconTruck } from "../icons";
+import { InfoStatCard } from "../ui/InfoStatCard";
 import { formatBRL } from "../../utils/money";
 import { origemTone } from "../../utils/freteVisuals";
 
@@ -44,41 +45,9 @@ export function FreteStatsBar({ total, page, pageSize, rows, loading }) {
 
   return (
     <div className="grid notranslate grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {items.map((item) => {
-        const Icon = item.icon;
-        return (
-          <div
-            key={item.label}
-            className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-sm sm:rounded-3xl sm:p-4"
-          >
-            <div
-              className="pointer-events-none absolute -right-4 -top-4 size-20 rounded-full bg-gradient-to-br from-primary-100/40 to-transparent blur-2xl"
-              aria-hidden
-            />
-            <div className="relative flex items-start gap-2.5 sm:gap-3">
-              <span
-                className={[
-                  "flex size-9 shrink-0 items-center justify-center rounded-xl sm:size-10 sm:rounded-2xl",
-                  item.accent,
-                ].join(" ")}
-              >
-                <Icon className="size-3.5 sm:size-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                  {item.label}
-                </p>
-                <p className="finance-text mt-0.5 truncate text-lg font-semibold tracking-tight text-slate-900 sm:mt-1 sm:text-xl">
-                  {item.value}
-                </p>
-                <p className="mt-0.5 truncate text-xs text-slate-500">
-                  {item.hint}
-                </p>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+      {items.map((item) => (
+        <InfoStatCard key={item.label} {...item} />
+      ))}
     </div>
   );
 }
