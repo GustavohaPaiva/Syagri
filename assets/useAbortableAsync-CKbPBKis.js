@@ -1,0 +1,1 @@
+import{r as e}from"./rolldown-runtime-S-ySWqyJ.js";import{i as t}from"./vendor-react-YvL5Yovn.js";var n=e(t(),1);function r(e,t,r=!0){(0,n.useEffect)(()=>{if(!r)return;let t=new AbortController,n=!0,i=()=>n&&!t.signal.aborted;return Promise.resolve().then(()=>e(t.signal,i)),()=>{n=!1,t.abort()}},[r,...t])}export{r as t};
