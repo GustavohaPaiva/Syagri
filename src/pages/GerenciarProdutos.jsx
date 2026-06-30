@@ -18,6 +18,7 @@ import {
   fetchProdutosList,
   fetchProdutosTotalCount,
   inativarProdutoOficial,
+  reativarProdutoOficial,
   upsertProdutoOficialManual,
 } from '../services/produtoImportacaoService'
 
@@ -42,6 +43,8 @@ export function GerenciarProdutos() {
 
   const [searchQuery, setSearchQuery] = useState('')
   const [fornecedorFilter, setFornecedorFilter] = useState('')
+  const [estadoFilter, setEstadoFilter] = useState('')
+  const [classeFilter, setClasseFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const debouncedSearch = useDebouncedValue(searchQuery, 300)
 
@@ -62,7 +65,7 @@ export function GerenciarProdutos() {
   const rangeEnd = Math.min(page * PAGE_SIZE, total)
 
   const hasFilters = Boolean(
-    searchQuery.trim() || fornecedorFilter || statusFilter,
+    searchQuery.trim() || fornecedorFilter || statusFilter || estadoFilter || classeFilter,
   )
 
   useAbortableAsync(
@@ -88,6 +91,8 @@ export function GerenciarProdutos() {
       const result = await fetchProdutosList({
         search: debouncedSearch,
         fornecedorId: fornecedorFilter || undefined,
+        estado: estadoFilter || undefined,
+        classe: classeFilter || undefined,
         ativo: parseStatusFilter(statusFilter),
         page,
         pageSize: PAGE_SIZE,
@@ -107,7 +112,7 @@ export function GerenciarProdutos() {
       setRows(result.rows)
       setTotal(result.total)
     },
-    [debouncedSearch, fornecedorFilter, statusFilter, page, reloadToken],
+    [debouncedSearch, fornecedorFilter, statusFilter, estadoFilter, classeFilter, page, reloadToken],
   )
 
   const reload = useCallback(() => {
@@ -133,6 +138,8 @@ export function GerenciarProdutos() {
     setSearchQuery('')
     setFornecedorFilter('')
     setStatusFilter('')
+    setEstadoFilter('')
+    setClasseFilter('')
     setPage(1)
   }
 
@@ -148,11 +155,14 @@ export function GerenciarProdutos() {
     const res = await upsertProdutoOficialManual({
       fornecedorId,
       id: payload.id,
-      sku_fornecedor: payload.sku_fornecedor,
+      sku_fornecedor: payload.referencia_complementar,
+      referencia_complementar: payload.referencia_complementar,
       nome: payload.nome,
-      cultura: payload.cultura,
+      estado: payload.estado,
+      classe: payload.classe,
       quarter: payload.quarter,
       preco_original: payload.preco_original,
+      desconto_usd: payload.desconto_usd,
       moeda_origem: payload.moeda_origem,
     })
 
@@ -164,6 +174,16 @@ export function GerenciarProdutos() {
     if (!window.confirm('Inativar este produto?')) return
     setActionError(null)
     const res = await inativarProdutoOficial(produtoId)
+    if (!res.ok) {
+      setActionError(res.error)
+      return
+    }
+    reload()
+  }
+
+  async function handleReativar(produtoId) {
+    setActionError(null)
+    const res = await reativarProdutoOficial(produtoId)
     if (!res.ok) {
       setActionError(res.error)
       return
@@ -232,6 +252,8 @@ export function GerenciarProdutos() {
         searchQuery={searchQuery}
         fornecedorId={fornecedorFilter}
         fornecedores={fornecedores}
+        estadoFilter={estadoFilter}
+        classeFilter={classeFilter}
         statusFilter={statusFilter}
         hasFilters={hasFilters}
         onClear={clearFilters}
@@ -241,6 +263,14 @@ export function GerenciarProdutos() {
         }}
         onFornecedorChange={(e) => {
           setFornecedorFilter(e.target.value)
+          setPage(1)
+        }}
+        onEstadoChange={(e) => {
+          setEstadoFilter(e.target.value)
+          setPage(1)
+        }}
+        onClasseChange={(e) => {
+          setClasseFilter(e.target.value)
           setPage(1)
         }}
         onStatusChange={(e) => {
@@ -258,6 +288,7 @@ export function GerenciarProdutos() {
           setModalOpen(true)
         }}
         onInativar={handleInativar}
+        onReativar={handleReativar}
         onViewHistorico={handleViewHistorico}
       />
 
@@ -274,6 +305,7 @@ export function GerenciarProdutos() {
       />
 
       <ModalProdutoOficialForm
+        key={editingProduto?.id ?? 'new-produto'}
         open={modalOpen}
         onClose={closeModal}
         initial={editingProduto}

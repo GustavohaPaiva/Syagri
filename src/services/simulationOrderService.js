@@ -51,6 +51,7 @@ async function insertSimulationItems(simulationId, lines, statusLinha) {
         volume: line.volume,
         preco_unitario: roundMoney(line.precoUnitario),
         proposta: roundMoney(line.proposta),
+        cultura: line.cultura ?? null,
         status_linha: statusLinha,
     }));
     const { error: itemsError } = await supabase
@@ -85,8 +86,9 @@ function parseBundle(data) {
             volume: Number(item.volume),
             preco_unitario: Number(item.preco_unitario),
             proposta: Number(item.proposta),
+            cultura: String(item.cultura ?? ''),
             product: prod
-                ? { nome: String(prod.nome ?? ''), cultura: String(prod.cultura ?? '') }
+                ? { nome: String(prod.nome ?? '') }
                 : null,
         };
     });
@@ -147,7 +149,8 @@ export async function fetchSimulationOrderBundle(simulationId) {
         volume,
         preco_unitario,
         proposta,
-        products ( nome, cultura )
+        cultura,
+        products ( nome )
       )
     `)
         .eq('id', simulationId)

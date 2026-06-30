@@ -3,6 +3,10 @@ import { CATALOG_PRODUCTS } from '../constants/catalogProducts'
 import { CULTURES } from '../constants/simulator'
 import { FLOOR_RATIO } from '../types/simulation'
 import { parseCpfCnpjInput } from '../utils/dataFormatters'
+import {
+  calcDiasAntecipacao,
+  calcPrecoSimulacao,
+} from '../utils/pricingCalculations'
 import { roundMoney } from '../utils/roundMoney'
 
 function clampProposta(proposta, precoUnitario, allowAnyPrice) {
@@ -12,38 +16,59 @@ function clampProposta(proposta, precoUnitario, allowAnyPrice) {
   return Math.min(Math.max(0, p), safePu)
 }
 
-function buildLineView(line) {
-  const valorTotal = roundMoney(line.volume * line.precoUnitario)
-  const propostaTotal = roundMoney(line.volume * line.proposta)
-  const floorUnit = FLOOR_RATIO * line.precoUnitario
-  const isLineBelowFloor = line.proposta < floorUnit
+function resolvePrecoUnitario(product, context) {
+  if (!product) return 0
+  const { dataPagamento, freteUnitario = 0 } = context
+  const dias = calcDiasAntecipacao(dataPagamento, product.vencimentoLista)
+  const { precoFinal } = calcPrecoSimulacao({
+    custoIcms: product.custoIcms ?? product.custoBrl * 0.96,
+    freteUnitario,
+    diasAntecipacao: dias,
+  })
+  return precoFinal
+}
+
+function buildLineView(line, catalog, context, canOverrideFloor) {
+  const product = catalog.find((p) => p.id === line.productId)
+  const precoUnitario = resolvePrecoUnitario(product, context)
+  const proposta = clampProposta(
+    line.proposta ?? precoUnitario,
+    precoUnitario,
+    canOverrideFloor,
+  )
+  const valorTotal = roundMoney(line.volume * precoUnitario)
+  const propostaTotal = roundMoney(line.volume * proposta)
+  const floorUnit = FLOOR_RATIO * precoUnitario
+  const isLineBelowFloor = proposta < floorUnit
+
   return {
     id: line.id,
     productId: line.productId,
     cultura: line.cultura,
     volume: line.volume,
-    precoUnitario: line.precoUnitario,
-    proposta: line.proposta,
+    precoUnitario,
+    proposta,
     valorTotal,
     propostaTotal,
     isLineBelowFloor,
+    displayNome: product?.displayNome ?? product?.nome ?? '—',
   }
 }
 
-function createLine(product) {
-  const pu = roundMoney(product.precoBase)
+function createLine(product, context) {
+  const pu = resolvePrecoUnitario(product, context)
   return {
     id: crypto.randomUUID(),
     productId: product.id,
-    cultura: product.cultura,
+    cultura: CULTURES[0] ?? '',
     volume: 1,
-    precoUnitario: pu,
     proposta: pu,
   }
 }
 
 export function useSimulation(options = {}) {
   const catalog = options.catalog ?? CATALOG_PRODUCTS
+  const freteUnitario = options.freteUnitario ?? 0
   const isGestor = options.role === 'gestor'
 
   const [estado, setEstadoState] = useState(null)
@@ -60,9 +85,19 @@ export function useSimulation(options = {}) {
   const [actionBanner, setActionBanner] = useState(null)
   const [remotePendingLock, setRemotePendingLock] = useState(false)
 
+  const pricingContext = useMemo(
+    () => ({ dataPagamento, freteUnitario }),
+    [dataPagamento, freteUnitario],
+  )
+
+  const canOverrideFloor = isGestor
+
   const lineViews = useMemo(
-    () => lines.map((line) => buildLineView(line)),
-    [lines],
+    () =>
+      lines.map((line) =>
+        buildLineView(line, catalog, pricingContext, canOverrideFloor),
+      ),
+    [lines, catalog, pricingContext, canOverrideFloor],
   )
 
   const { totalValor, totalProposta, globalStatus } = useMemo(() => {
@@ -81,7 +116,6 @@ export function useSimulation(options = {}) {
   }, [lineViews])
 
   const isReadOnly = !isGestor && remotePendingLock
-  const canOverrideFloor = isGestor
   const canConvert =
     lines.length > 0 &&
     totalValor > 0 &&
@@ -89,11 +123,7 @@ export function useSimulation(options = {}) {
 
   const showFreteRotas = tipoFrete !== 'FOB'
 
-  const cultureOptions = useMemo(() => {
-    const fromCatalog = new Set(catalog.map((p) => p.cultura))
-    const merged = new Set([...CULTURES, ...fromCatalog])
-    return [...merged].sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  }, [catalog])
+  const cultureOptions = useMemo(() => [...CULTURES].sort((a, b) => a.localeCompare(b, 'pt-BR')), [])
 
   const setClientName = useCallback(
     (value) => {
@@ -180,8 +210,8 @@ export function useSimulation(options = {}) {
     if (isReadOnly) return
     const first = catalog[0]
     if (!first) return
-    setLines((prev) => [...prev, createLine(first)])
-  }, [catalog, isReadOnly])
+    setLines((prev) => [...prev, createLine(first, pricingContext)])
+  }, [catalog, isReadOnly, pricingContext])
 
   const removeLine = useCallback(
     (lineId) => {
@@ -196,47 +226,31 @@ export function useSimulation(options = {}) {
       if (isReadOnly) return
       const product = catalog.find((p) => p.id === productId)
       if (!product) return
-      const pu = roundMoney(product.precoBase)
+      const pu = resolvePrecoUnitario(product, pricingContext)
       setLines((prev) =>
         prev.map((line) => {
           if (line.id !== lineId) return line
           return {
             ...line,
             productId,
-            cultura: product.cultura,
-            precoUnitario: pu,
             proposta: pu,
           }
         }),
       )
     },
-    [catalog, isReadOnly],
+    [catalog, isReadOnly, pricingContext],
   )
 
   const setLineCultura = useCallback(
     (lineId, cultura) => {
       if (isReadOnly) return
       setLines((prev) =>
-        prev.map((line) => {
-          if (line.id !== lineId) return line
-          const currentProduct = catalog.find((p) => p.id === line.productId)
-          if (currentProduct?.cultura === cultura) {
-            return { ...line, cultura }
-          }
-          const next = catalog.find((p) => p.cultura === cultura)
-          if (!next) return { ...line, cultura }
-          const pu = roundMoney(next.precoBase)
-          return {
-            ...line,
-            cultura,
-            productId: next.id,
-            precoUnitario: pu,
-            proposta: pu,
-          }
-        }),
+        prev.map((line) =>
+          line.id === lineId ? { ...line, cultura } : line,
+        ),
       )
     },
-    [catalog, isReadOnly],
+    [isReadOnly],
   )
 
   const setLineVolume = useCallback(
@@ -258,14 +272,16 @@ export function useSimulation(options = {}) {
       setLines((prev) =>
         prev.map((line) => {
           if (line.id !== lineId) return line
+          const product = catalog.find((p) => p.id === line.productId)
+          const pu = resolvePrecoUnitario(product, pricingContext)
           return {
             ...line,
-            proposta: clampProposta(proposta, line.precoUnitario, canOverrideFloor),
+            proposta: clampProposta(proposta, pu, canOverrideFloor),
           }
         }),
       )
     },
-    [isReadOnly, canOverrideFloor],
+    [catalog, isReadOnly, canOverrideFloor, pricingContext],
   )
 
   const dismissActionBanner = useCallback(() => setActionBanner(null), [])
@@ -307,20 +323,16 @@ export function useSimulation(options = {}) {
       setLines(
         bundle.items
           .filter((it) => it.product_id.length > 0)
-          .map((it) => {
-            const prod = catalog.find((p) => p.id === it.product_id)
-            return {
-              id: it.id,
-              productId: it.product_id,
-              cultura: prod?.cultura ?? it.product?.cultura ?? '',
-              volume: it.volume,
-              precoUnitario: roundMoney(it.preco_unitario),
-              proposta: roundMoney(it.proposta),
-            }
-          }),
+          .map((it) => ({
+            id: it.id,
+            productId: it.product_id,
+            cultura: it.cultura ?? CULTURES[0] ?? '',
+            volume: it.volume,
+            proposta: roundMoney(it.proposta),
+          })),
       )
     },
-    [catalog, isGestor],
+    [isGestor],
   )
 
   const resetLocal = useCallback(() => {

@@ -7,7 +7,7 @@ export function Modal({
   title,
   children,
   footer,
-  size = 'md',
+  size = 'lg',
 }) {
   const titleId = useId()
   const panelRef = useRef(null)
@@ -40,7 +40,16 @@ export function Modal({
 
   if (!open) return null
 
-  const widthClass = size === 'sm' ? 'sm:max-w-sm' : 'sm:max-w-md'
+  const widthClass =
+    size === 'sm'
+      ? 'sm:max-w-sm'
+      : size === 'md'
+        ? 'sm:max-w-xl'
+        : size === 'xl'
+          ? 'sm:max-w-4xl'
+          : size === '2xl'
+            ? 'sm:max-w-6xl'
+            : 'sm:max-w-2xl'
 
   return createPortal(
     <div className="fixed inset-0 z-50" role="presentation">

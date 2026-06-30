@@ -1,21 +1,32 @@
-/** IDs fixos alinhados ao seed SQL (`supabase/migrations/20260513120000_...`). */
 export const CATALOG_PRODUCTS = [
-    {
-        id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
-        nome: 'Soja RR',
-        cultura: 'Soja',
-        precoBase: 118.5,
-    },
-    {
-        id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02',
-        nome: 'Milho safrinha',
-        cultura: 'Milho',
-        precoBase: 72.0,
-    },
-    {
-        id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a03',
-        nome: 'Algodão caroço',
-        cultura: 'Algodão',
-        precoBase: 165.25,
-    },
-];
+  {
+    id: 'demo-soja',
+    nome: 'MAP',
+    displayNome: 'MAP · Demo',
+    quarter: 'Q1',
+    precoBase: 1850,
+    custoBrl: 1850,
+    custoIcms: 1776,
+    vencimentoLista: '',
+  },
+  {
+    id: 'demo-milho',
+    nome: 'KCl',
+    displayNome: 'KCl · Demo',
+    quarter: 'Q1',
+    precoBase: 1620,
+    custoBrl: 1620,
+    custoIcms: 1555.2,
+    vencimentoLista: '',
+  },
+  {
+    id: 'demo-algodao',
+    nome: 'Ureia',
+    displayNome: 'Ureia · Demo',
+    quarter: 'Q2',
+    precoBase: 2100,
+    custoBrl: 2100,
+    custoIcms: 2016,
+    vencimentoLista: '',
+  },
+]

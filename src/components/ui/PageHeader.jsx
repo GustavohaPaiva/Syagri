@@ -29,7 +29,7 @@ export function PageHeader({ eyebrow, title, description, actions, className = '
         ) : null}
       </div>
       {actions ? (
-        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center [&>*]:w-full sm:[&>*]:w-auto">
+        <div className="w-full shrink-0 sm:w-auto sm:min-w-[12rem] sm:max-w-md">
           {actions}
         </div>
       ) : null}

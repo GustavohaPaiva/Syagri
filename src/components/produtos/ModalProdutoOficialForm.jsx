@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { ESTADOS_PRODUTO, CLASSES_PRODUTO } from '../../constants/mapeamentoCampos'
 import { Input } from '../ui/Input'
 import { Modal } from '../ui/Modal'
 import { ModalFormFooter } from '../ui/ModalFormFooter'
@@ -11,12 +12,29 @@ const MOEDA_OPTIONS = [
 ]
 
 const EMPTY = {
-  sku_fornecedor: '',
   nome: '',
-  cultura: '',
+  referencia_complementar: '',
+  estado: '',
+  classe: 'Convencional',
   quarter: '',
   preco_original: '',
-  moeda_origem: 'BRL',
+  desconto_usd: '0',
+  moeda_origem: 'USD',
+}
+
+function buildForm(initial) {
+  if (!initial) return EMPTY
+  return {
+    nome: initial.nome ?? '',
+    referencia_complementar:
+      initial.referencia_complementar ?? initial.sku_fornecedor ?? '',
+    estado: initial.estado ?? '',
+    classe: initial.classe ?? 'Convencional',
+    quarter: initial.quarter ?? '',
+    preco_original: String(initial.preco_original ?? ''),
+    desconto_usd: String(initial.desconto_usd ?? 0),
+    moeda_origem: initial.moeda_origem ?? 'USD',
+  }
 }
 
 export function ModalProdutoOficialForm({
@@ -27,33 +45,14 @@ export function ModalProdutoOficialForm({
   title = 'Novo produto',
   fornecedores,
 }) {
-  const [form, setForm] = useState(EMPTY)
-  const [fornecedorId, setFornecedorId] = useState('')
+  const [form, setForm] = useState(() => buildForm(initial))
+  const [fornecedorId, setFornecedorId] = useState(
+    () => initial?.fornecedor_id ?? fornecedores?.[0]?.id ?? '',
+  )
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
 
   const showFornecedorSelect = Boolean(fornecedores?.length) && !initial?.id
-
-  useEffect(() => {
-    if (!open) return
-    setForm(
-      initial
-        ? {
-            sku_fornecedor: initial.sku_fornecedor ?? '',
-            nome: initial.nome ?? '',
-            cultura: initial.cultura ?? '',
-            quarter: initial.quarter ?? '',
-            preco_original: String(initial.preco_original ?? ''),
-            moeda_origem: initial.moeda_origem ?? 'BRL',
-          }
-        : EMPTY,
-    )
-    setFornecedorId(
-      initial?.fornecedor_id ?? fornecedores?.[0]?.id ?? '',
-    )
-    setError(null)
-    setSaving(false)
-  }, [open, initial, fornecedores])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -67,17 +66,20 @@ export function ModalProdutoOficialForm({
     const preco = Number.parseFloat(
       String(form.preco_original).replace(/\./g, '').replace(',', '.'),
     )
+    const desconto = Number.parseFloat(
+      String(form.desconto_usd).replace(/\./g, '').replace(',', '.'),
+    )
 
-    if (!form.sku_fornecedor.trim()) {
-      setError('Informe o SKU.')
+    if (!form.nome.trim() || !form.quarter.trim()) {
+      setError('Preencha fertilizante e quarter.')
       return
     }
-    if (!form.nome.trim() || !form.cultura.trim() || !form.quarter.trim()) {
-      setError('Preencha todos os campos obrigatórios.')
+    if (!form.estado) {
+      setError('Selecione o estado (MG ou SP).')
       return
     }
     if (!Number.isFinite(preco) || preco < 0) {
-      setError('Informe um preço válido.')
+      setError('Informe um preço de custo válido.')
       return
     }
 
@@ -85,11 +87,14 @@ export function ModalProdutoOficialForm({
     const res = await onSave({
       id: initial?.id,
       fornecedorId: showFornecedorSelect ? fornecedorId : undefined,
-      sku_fornecedor: form.sku_fornecedor.trim(),
+      sku_fornecedor: form.referencia_complementar.trim(),
+      referencia_complementar: form.referencia_complementar.trim(),
       nome: form.nome.trim(),
-      cultura: form.cultura.trim(),
+      estado: form.estado,
+      classe: form.classe,
       quarter: form.quarter.trim(),
       preco_original: preco,
+      desconto_usd: Number.isFinite(desconto) ? desconto : 0,
       moeda_origem: form.moeda_origem,
     })
     setSaving(false)
@@ -134,56 +139,72 @@ export function ModalProdutoOficialForm({
           />
         ) : null}
         <Input
-          label="SKU"
-          value={form.sku_fornecedor}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, sku_fornecedor: e.target.value }))
-          }
-          disabled={saving || Boolean(initial?.id)}
-        />
-        <Input
-          label="Nome"
+          label="Fertilizante"
           value={form.nome}
           onChange={(e) => setForm((p) => ({ ...p, nome: e.target.value }))}
           disabled={saving}
         />
+        <Input
+          label="Referência complementar (opcional)"
+          value={form.referencia_complementar}
+          onChange={(e) =>
+            setForm((p) => ({ ...p, referencia_complementar: e.target.value }))
+          }
+          disabled={saving || Boolean(initial?.id)}
+        />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label="Cultura"
-            value={form.cultura}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, cultura: e.target.value }))
-            }
+          <Select
+            label="Estado"
+            placeholder="Selecione…"
+            value={form.estado}
+            onChange={(e) => setForm((p) => ({ ...p, estado: e.target.value }))}
+            options={ESTADOS_PRODUTO}
             disabled={saving}
           />
-          <Input
-            label="Quarter"
-            value={form.quarter}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, quarter: e.target.value }))
-            }
+          <Select
+            label="Classe"
+            value={form.classe}
+            onChange={(e) => setForm((p) => ({ ...p, classe: e.target.value }))}
+            options={CLASSES_PRODUTO}
             disabled={saving}
           />
         </div>
+        <Input
+          label="Quarter"
+          value={form.quarter}
+          onChange={(e) =>
+            setForm((p) => ({ ...p, quarter: e.target.value }))
+          }
+          disabled={saving}
+          placeholder="Ex.: Q2 2026"
+        />
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
-            label="Preço original"
+            label="Preço de custo (USD)"
             value={form.preco_original}
             onChange={(e) =>
               setForm((p) => ({ ...p, preco_original: e.target.value }))
             }
             disabled={saving}
           />
-          <Select
-            label="Moeda"
-            value={form.moeda_origem}
+          <Input
+            label="Desconto USD"
+            value={form.desconto_usd}
             onChange={(e) =>
-              setForm((p) => ({ ...p, moeda_origem: e.target.value }))
+              setForm((p) => ({ ...p, desconto_usd: e.target.value }))
             }
-            options={MOEDA_OPTIONS}
             disabled={saving}
           />
         </div>
+        <Select
+          label="Moeda"
+          value={form.moeda_origem}
+          onChange={(e) =>
+            setForm((p) => ({ ...p, moeda_origem: e.target.value }))
+          }
+          options={MOEDA_OPTIONS}
+          disabled={saving}
+        />
         {error ? (
           <p className="text-sm font-medium text-feedback-error" role="alert">
             {error}

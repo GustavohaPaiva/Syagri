@@ -116,7 +116,7 @@ const SimulationLinesTableRow = memo(function SimulationLinesTableRow({
 export function SimulationLinesTable({
   lines,
   cultureOptions,
-  productsByCulture,
+  productOptions,
   isReadOnly,
   canOverrideFloor,
   onVolumeChange,
@@ -153,7 +153,7 @@ export function SimulationLinesTable({
               cell={cell}
               selectClass={selectClass}
               cultureOptions={cultureOptions}
-              productOptions={productsByCulture(row.cultura)}
+              productOptions={productOptions}
               isReadOnly={isReadOnly}
               canOverrideFloor={canOverrideFloor}
               onVolumeChange={onVolumeChange}

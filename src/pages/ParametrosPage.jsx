@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { AlertMessage } from '../components/ui/AlertMessage'
 import { Button } from '../components/ui/Button'
 import { DataTable } from '../components/ui/DataTable'
@@ -22,6 +22,14 @@ export function ParametrosPage() {
   const [moeda, setMoeda] = useState('')
   const [taxa, setTaxa] = useState('')
   const [saving, setSaving] = useState(false)
+  const [dolar, setDolar] = useState('')
+  const [dolarSaving, setDolarSaving] = useState(false)
+  const [dolarError, setDolarError] = useState(null)
+
+  const dolarAtual = useMemo(() => {
+    const usd = cotacoes.find((c) => c.moeda_origem?.toUpperCase() === 'USD')
+    return usd ? Number(usd.taxa_conversao) : null
+  }, [cotacoes])
 
   const loadCotacoes = useCallback(async (isActive) => {
     setLoading(true)
@@ -34,6 +42,15 @@ export function ParametrosPage() {
       return
     }
     setCotacoes(res.rows)
+    const usd = res.rows.find((c) => c.moeda_origem?.toUpperCase() === 'USD')
+    if (usd) {
+      setDolar(
+        Number(usd.taxa_conversao).toLocaleString('pt-BR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 4,
+        }),
+      )
+    }
   }, [])
 
   useSyncPageLoading(loading)
@@ -44,6 +61,38 @@ export function ParametrosPage() {
     },
     [loadCotacoes],
   )
+
+  async function handleSubmitDolar(e) {
+    e.preventDefault()
+    setDolarError(null)
+    setSuccessMessage(null)
+
+    const valor = Number.parseFloat(String(dolar).replace(/\./g, '').replace(',', '.'))
+    if (!Number.isFinite(valor) || valor <= 0) {
+      setDolarError('Informe um valor de dólar válido maior que zero.')
+      return
+    }
+
+    setDolarSaving(true)
+    const res = await criarCotacao({
+      moeda_origem: 'USD',
+      taxa_conversao: valor,
+    })
+    setDolarSaving(false)
+
+    if (!res.ok) {
+      setDolarError(res.error)
+      return
+    }
+
+    setSuccessMessage(
+      `Dólar atualizado para R$ ${valor.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4,
+      })}. Os preços internos dos produtos em USD foram recalculados automaticamente.`,
+    )
+    await loadCotacoes(() => true)
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -118,8 +167,51 @@ export function ParametrosPage() {
         </AlertMessage>
       ) : null}
 
+      <section className="overflow-hidden rounded-2xl border border-primary-200/80 bg-gradient-to-br from-primary-50/70 via-white to-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Dólar do dia (USD → BRL)
+          </h2>
+          {dolarAtual !== null ? (
+            <span className="rounded-full bg-primary-100 px-3 py-1 text-xs font-semibold text-primary-700">
+              Atual: R${' '}
+              {dolarAtual.toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 4,
+              })}
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-1 text-sm text-slate-600">
+          Atualize aqui o valor do dólar. Ao salvar, os preços internos de todos
+          os produtos em USD são recalculados automaticamente.
+        </p>
+
+        <form
+          onSubmit={handleSubmitDolar}
+          className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end"
+        >
+          <div className="flex-1">
+            <Input
+              label="Valor do dólar (R$)"
+              inputMode="decimal"
+              placeholder="Ex.: 5,45"
+              value={dolar}
+              onChange={(e) => setDolar(e.target.value)}
+              disabled={dolarSaving || loading}
+              error={dolarError ?? undefined}
+            />
+          </div>
+          <Button type="submit" loading={dolarSaving} className="shrink-0">
+            Salvar dólar
+          </Button>
+        </form>
+      </section>
+
       <section className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
-        <h2 className="text-sm font-semibold text-slate-900">Nova cotação</h2>
+        <h2 className="text-sm font-semibold text-slate-900">
+          Outras moedas (avançado)
+        </h2>
         <p className="mt-1 text-sm text-slate-600">
           BRL usa taxa 1 automaticamente. Cadastre USD, EUR e outras moedas
           usadas nos lançamentos.

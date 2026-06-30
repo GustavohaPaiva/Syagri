@@ -1,7 +1,16 @@
 /**
- * Lê a primeira planilha e retorna cabeçalhos (linha 1) + linhas de dados.
+ * Lê a primeira planilha e analisa estrutura (cabeçalho, metadados, dados).
  */
-export async function parseSpreadsheetFile(file) {
+import {
+  analyzeSpreadsheet,
+  autoMapColumns,
+  buildColumnsFromHeader,
+  detectFornecedor,
+  filterDataRows,
+  findEmbalagemColumnIndex,
+} from './spreadsheetAnalyzer'
+
+export async function parseSpreadsheetFile(file, options = {}) {
   const XLSX = await import('xlsx')
   const buffer = await file.arrayBuffer()
   const workbook = XLSX.read(buffer, { type: 'array', raw: false })
@@ -21,34 +30,88 @@ export async function parseSpreadsheetFile(file) {
     return { ok: false, error: 'Nenhuma linha encontrada na planilha.' }
   }
 
-  const headerCells = matrix[0] ?? []
-  const columns = headerCells
-    .map((cell, index) => {
-      const label = String(cell ?? '').trim()
-      return {
-        id: `col-${index}`,
-        index,
-        label: label || `Coluna ${index + 1}`,
-      }
-    })
-    .filter((col) => col.label.length > 0)
+  const fileName = file?.name ?? options.fileName ?? ''
+  const fornecedorDetectado = detectFornecedor({ fileName, matrix })
 
-  if (columns.length === 0) {
-    return {
-      ok: false,
-      error: 'Não foi possível identificar colunas na primeira linha.',
+  const headerRowIndex =
+    options.headerRowIndex !== undefined
+      ? options.headerRowIndex
+      : undefined
+
+  let analysis
+  if (headerRowIndex !== undefined) {
+    const columns = buildColumnsFromHeader(matrix, headerRowIndex)
+    if (columns.length === 0) {
+      return {
+        ok: false,
+        error: 'Não foi possível identificar colunas na linha selecionada.',
+      }
+    }
+    const base = analyzeSpreadsheet(matrix)
+    const autoMap =
+      options.columnMappings?.length > 0
+        ? {
+            mappings: options.columnMappings,
+            confidence: options.autoMapConfidence ?? {},
+            missingRequired: [],
+          }
+        : autoMapColumns(matrix, headerRowIndex)
+
+    const produtoIdx = autoMap.mappings.find((m) => m.target === 'produto')?.sourceIndex
+    const precoIdx = autoMap.mappings.find((m) => m.target === 'preco_custo')?.sourceIndex
+    const referenciaIdx = autoMap.mappings.find(
+      (m) => m.target === 'referencia_complementar',
+    )?.sourceIndex
+    const embalagemIdx = findEmbalagemColumnIndex(matrix, headerRowIndex)
+
+    analysis = {
+      ok: true,
+      headerRowIndex,
+      headerConfidence: 'manual',
+      headerScore: null,
+      columns,
+      dataRows: filterDataRows(matrix, headerRowIndex, {
+        produtoIndex: produtoIdx,
+        referenciaIndex: referenciaIdx,
+        precoIndex: precoIdx,
+        embalagemIndex: embalagemIdx,
+      }),
+      moedaDetectada: 'USD',
+      dataValidade: options.dataValidade ?? base.dataValidade ?? '',
+      quarterCalculado:
+        options.quarterCalculado ?? base.quarterCalculado ?? '',
+      autoMappings: autoMap.mappings,
+      autoMapConfidence: autoMap.confidence,
+      autoMapMissingRequired: autoMap.missingRequired,
+      fornecedorDetectado,
+      metadataPlanilha: {
+        ...(base.metadataPlanilha ?? {}),
+        headerRowIndex,
+        headerConfidence: 'manual',
+        autoMapConfidence: autoMap.confidence,
+        autoMapMissingRequired: autoMap.missingRequired,
+        fornecedorDetectado,
+      },
+    }
+  } else {
+    analysis = analyzeSpreadsheet(matrix)
+    if (!analysis.ok) return analysis
+    analysis = {
+      ...analysis,
+      fornecedorDetectado,
+      metadataPlanilha: {
+        ...analysis.metadataPlanilha,
+        fornecedorDetectado,
+      },
     }
   }
-
-  const dataRows = matrix.slice(1).filter((row) =>
-    row.some((cell) => String(cell ?? '').trim().length > 0),
-  )
 
   return {
     ok: true,
     sheetName,
-    columns,
-    dataRows,
-    headerCells,
+    matrix,
+    fileName,
+    ...analysis,
+    headerCells: matrix[analysis.headerRowIndex] ?? [],
   }
 }

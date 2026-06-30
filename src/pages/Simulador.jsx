@@ -38,6 +38,7 @@ import {
 import { notifyGestoresSimulationPending } from "../services/notificationService";
 import {
   fetchCatalogoSimulador,
+  fetchFreteValor,
   getFallbackCatalog,
 } from "../services/produtoCatalogoService";
 import { formatBRL } from "../utils/money";
@@ -50,7 +51,8 @@ export function Simulador() {
   const [catalog, setCatalog] = useState(getFallbackCatalog());
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogSource, setCatalogSource] = useState("fallback");
-  const sim = useSimulation({ role, catalog });
+  const [freteUnitario, setFreteUnitario] = useState(0);
+  const sim = useSimulation({ role, catalog, freteUnitario });
   const navigate = useNavigate();
   const { showAlert } = useAlertDialog();
 
@@ -73,9 +75,12 @@ export function Simulador() {
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [convertAfterClientSave, setConvertAfterClientSave] = useState(false);
 
-  const loadCatalog = useCallback(async (quarter, isActive) => {
+  const loadCatalog = useCallback(async (quarter, estado, isActive) => {
     setCatalogLoading(true);
-    const res = await fetchCatalogoSimulador({ quarter: quarter || undefined });
+    const res = await fetchCatalogoSimulador({
+      quarter: quarter || undefined,
+      estado: estado || undefined,
+    });
     if (isActive && !isActive()) return;
     setCatalogLoading(false);
 
@@ -90,9 +95,23 @@ export function Simulador() {
 
   useAbortableAsync(
     async (_signal, isActive) => {
-      await loadCatalog(sim.quarter, isActive);
+      await loadCatalog(sim.quarter, sim.estado, isActive);
     },
-    [sim.quarter, loadCatalog],
+    [sim.quarter, sim.estado, loadCatalog],
+  );
+
+  useAbortableAsync(
+    async (_signal, isActive) => {
+      if (sim.tipoFrete === "FOB" || !sim.origemFrete || !sim.destinoFrete) {
+        if (isActive && !isActive()) return;
+        setFreteUnitario(0);
+        return;
+      }
+      const res = await fetchFreteValor(sim.origemFrete, sim.destinoFrete);
+      if (isActive && !isActive()) return;
+      setFreteUnitario(res.ok ? res.valor : 0);
+    },
+    [sim.tipoFrete, sim.origemFrete, sim.destinoFrete],
   );
 
   useAbortableAsync(
@@ -146,11 +165,12 @@ export function Simulador() {
         destinoFrete: sim.destinoFrete,
         dataPagamento: sim.dataPagamento || null,
         quarter: sim.quarter,
-        lines: sim.simulationLines.map((l) => ({
+        lines: sim.lines.map((l) => ({
           productId: l.productId,
           volume: l.volume,
           precoUnitario: l.precoUnitario,
           proposta: l.proposta,
+          cultura: l.cultura,
         })),
         totalValor: sim.totalValor,
         totalProposta: sim.totalProposta,
@@ -203,11 +223,12 @@ export function Simulador() {
       destinoFrete: sim.destinoFrete,
       dataPagamento: sim.dataPagamento || null,
       quarter: sim.quarter,
-      lines: sim.simulationLines.map((l) => ({
+      lines: sim.lines.map((l) => ({
         productId: l.productId,
         volume: l.volume,
         precoUnitario: l.precoUnitario,
         proposta: l.proposta,
+        cultura: l.cultura,
       })),
       totalValor: sim.totalValor,
       totalProposta: sim.totalProposta,
@@ -275,8 +296,10 @@ export function Simulador() {
     label: c,
   }));
 
-  const productsByCulture = (cultura) =>
-    sim.catalog.filter((p) => !cultura || p.cultura === cultura);
+  const productsForSelect = sim.catalog.map((p) => ({
+    id: p.id,
+    nome: p.displayNome ?? p.nome,
+  }));
 
   const pageTitle = simulationId ? "Editar simulação" : "Nova simulação";
   const pageDescription = simulationId
@@ -459,7 +482,7 @@ export function Simulador() {
         <SimuladorSectionPanel
           icon={SIMULADOR_SECTION_ICONS.produtos}
           title="Produtos"
-          description="Adicione culturas, volumes e valores de proposta por linha."
+          description="Adicione cultura (simulação), produtos e propostas por linha."
           gradient="from-primary-50/70 via-white to-violet-50/40"
           actions={
             <Button
@@ -483,7 +506,7 @@ export function Simulador() {
                     key={row.id}
                     row={row}
                     cultureOptions={sim.cultureOptions}
-                    productOptions={productsByCulture(row.cultura)}
+                    productOptions={productsForSelect}
                     isReadOnly={sim.isReadOnly}
                     canOverrideFloor={sim.canOverrideFloor}
                     onVolumeChange={(v) => sim.setLineVolume(row.id, v)}
@@ -497,7 +520,7 @@ export function Simulador() {
               <SimulationLinesTable
                 lines={sim.lines}
                 cultureOptions={sim.cultureOptions}
-                productsByCulture={productsByCulture}
+                productOptions={productsForSelect}
                 isReadOnly={sim.isReadOnly}
                 canOverrideFloor={sim.canOverrideFloor}
                 onVolumeChange={sim.setLineVolume}

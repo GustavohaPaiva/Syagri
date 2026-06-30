@@ -1,5 +1,13 @@
 import { EmptyState } from './EmptyState'
 
+function isInteractiveTarget(target) {
+  return Boolean(
+    target.closest(
+      'input, button, select, textarea, a, [data-no-row-click], label',
+    ),
+  )
+}
+
 export function DataTable({
   columns,
   rows,
@@ -7,6 +15,7 @@ export function DataTable({
   loadingMessage = 'Carregando…',
   emptyMessage = 'Nenhum registro encontrado.',
   getRowKey,
+  onRowClick,
   className = '',
 }) {
   return (
@@ -61,28 +70,42 @@ export function DataTable({
             rows.map((row) => (
               <tr
                 key={getRowKey(row)}
-                className="transition-colors hover:bg-slate-50/70"
+                className={[
+                  'transition-colors hover:bg-slate-50/70',
+                  onRowClick ? 'cursor-pointer' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={
+                  onRowClick
+                    ? (e) => {
+                        if (isInteractiveTarget(e.target)) return
+                        onRowClick(row)
+                      }
+                    : undefined
+                }
               >
                 {columns.map((col) => {
                   const renderCell = col.render ?? col.cell
                   return (
-                  <td
-                    key={col.key}
-                    className={[
-                      'px-4 py-3 text-slate-600',
-                      col.align === 'right'
-                        ? 'text-right'
-                        : col.align === 'center'
-                          ? 'text-center'
-                          : '',
-                      col.cellClassName ?? '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                  >
-                    {renderCell ? renderCell(row) : null}
-                  </td>
-                )})}
+                    <td
+                      key={col.key}
+                      className={[
+                        'px-4 py-3 text-slate-600',
+                        col.align === 'right'
+                          ? 'text-right'
+                          : col.align === 'center'
+                            ? 'text-center'
+                            : '',
+                        col.cellClassName ?? '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                    >
+                      {renderCell ? renderCell(row) : null}
+                    </td>
+                  )
+                })}
               </tr>
             ))
           )}

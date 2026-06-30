@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
+/// <reference types="vitest/config" />
+
 // GitHub Pages: https://gustavohapaiva.github.io/Syagri/
 const pagesBase = '/Syagri/'
 
@@ -29,6 +31,10 @@ export default defineConfig(({ mode }) => ({
         },
       },
     },
+  },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.js'],
   },
   plugins: [
     react(),

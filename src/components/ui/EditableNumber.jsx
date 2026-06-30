@@ -67,6 +67,7 @@ export function EditableNumber({
         min={min}
         step={step}
         aria-label={ariaLabel}
+        data-no-row-click
         className={[
           "finance-text h-9 w-full min-w-[4.5rem] rounded-xl border border-primary-300 bg-white px-2 text-base font-semibold text-slate-900 outline-none ring-2 ring-primary-500/20",
           centered ? "mx-auto max-w-[6rem] text-center" : "",
@@ -88,6 +89,7 @@ export function EditableNumber({
   return (
     <button
       type="button"
+      data-no-row-click
       aria-label={
         ariaLabel ? `${ariaLabel}: ${display}. Clique para editar.` : undefined
       }

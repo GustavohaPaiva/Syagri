@@ -44,19 +44,9 @@ const GerenciarConsultores = lazy(() =>
     default: m.GerenciarConsultores,
   })),
 );
-const GerenciarFornecedores = lazy(() =>
-  import("./pages/GerenciarFornecedores").then((m) => ({
-    default: m.GerenciarFornecedores,
-  })),
-);
 const GerenciarProdutos = lazy(() =>
   import("./pages/GerenciarProdutos").then((m) => ({
     default: m.GerenciarProdutos,
-  })),
-);
-const ConstrutorMapeamento = lazy(() =>
-  import("./pages/ConstrutorMapeamento").then((m) => ({
-    default: m.ConstrutorMapeamento,
   })),
 );
 const ImportacaoProdutos = lazy(() =>
@@ -64,14 +54,14 @@ const ImportacaoProdutos = lazy(() =>
     default: m.ImportacaoProdutos,
   })),
 );
+const ImportacaoPreviewPage = lazy(() =>
+  import("./pages/ImportacaoPreviewPage").then((m) => ({
+    default: m.ImportacaoPreviewPage,
+  })),
+);
 const LoteDetalhePage = lazy(() =>
   import("./pages/LoteDetalhePage").then((m) => ({
     default: m.LoteDetalhePage,
-  })),
-);
-const FornecedorDetalhePage = lazy(() =>
-  import("./pages/FornecedorDetalhePage").then((m) => ({
-    default: m.FornecedorDetalhePage,
   })),
 );
 const ListagemSimulacoes = lazy(() =>
@@ -254,6 +244,14 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="importacao/preview"
+                  element={
+                    <LazyPage>
+                      <ImportacaoPreviewPage />
+                    </LazyPage>
+                  }
+                />
+                <Route
                   path="produtos"
                   element={
                     <LazyPage>
@@ -262,34 +260,10 @@ export default function App() {
                   }
                 />
                 <Route
-                  path="fornecedores"
-                  element={
-                    <LazyPage>
-                      <GerenciarFornecedores />
-                    </LazyPage>
-                  }
-                />
-                <Route
                   path="importacao/lote/:id"
                   element={
                     <LazyPage>
                       <LoteDetalhePage />
-                    </LazyPage>
-                  }
-                />
-                <Route
-                  path="fornecedores/:id"
-                  element={
-                    <LazyPage>
-                      <FornecedorDetalhePage />
-                    </LazyPage>
-                  }
-                />
-                <Route
-                  path="importacao/mapeamento"
-                  element={
-                    <LazyPage>
-                      <ConstrutorMapeamento />
                     </LazyPage>
                   }
                 />

@@ -11,7 +11,7 @@ import {
   IconLeaf,
   IconPackage,
   IconPanelLeft,
-  //IconSliders,
+  IconSliders,
   IconTruck,
   IconUser,
   IconUsers,
@@ -82,11 +82,6 @@ function navItemsForRole(role) {
         label: "Produtos",
         icon: IconLeaf,
       },
-      {
-        to: "/admin/fornecedores",
-        label: "Fornecedores",
-        icon: IconUsers,
-      },
 
       // Clientes
       { to: "/clientes", label: "Clientes", icon: IconUser },
@@ -108,7 +103,7 @@ function navItemsForRole(role) {
       //{ to: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
 
       // Parâmetros
-      //{ to: "/parametros", label: "Parâmetros", icon: IconSliders },
+      { to: "/parametros", label: "Parâmetros", icon: IconSliders },
       ...shared,
     ];
   }

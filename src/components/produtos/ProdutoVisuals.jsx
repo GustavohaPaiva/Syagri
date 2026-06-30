@@ -1,4 +1,5 @@
 import { IconPackage, IconSearch } from '../icons'
+import { CLASSES_PRODUTO, ESTADOS_PRODUTO } from '../../constants/mapeamentoCampos'
 import { InfoStatCard } from '../ui/InfoStatCard'
 import { Button } from '../ui/Button'
 import { SearchInput } from '../ui/SearchInput'
@@ -16,6 +17,10 @@ export function ProdutoFiltersPanel({
   fornecedorId,
   onFornecedorChange,
   fornecedores,
+  estadoFilter,
+  onEstadoChange,
+  classeFilter,
+  onClasseChange,
   statusFilter,
   onStatusChange,
   onClear,
@@ -35,7 +40,7 @@ export function ProdutoFiltersPanel({
               Busca e filtros
             </p>
             <p className="mt-1 text-sm text-slate-600">
-              Encontre produtos por nome, SKU, cultura ou fornecedor.
+              Encontre produtos por fertilizante, referência ou fornecedor.
             </p>
           </div>
           {hasFilters ? (
@@ -51,19 +56,19 @@ export function ProdutoFiltersPanel({
         </div>
       </div>
 
-      <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3">
-        <div className="sm:col-span-2 lg:col-span-1">
+      <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-5">
+        <div className="sm:col-span-2 lg:col-span-2">
           <label
             htmlFor="produto-filter-busca"
             className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"
           >
             <IconSearch className="size-3.5" />
-            Nome, SKU ou cultura
+            Fertilizante ou referência
           </label>
           <SearchInput
             id="produto-filter-busca"
             ariaLabel="Buscar produto"
-            placeholder="Ex.: MAP, Soja, YARA-001…"
+            placeholder="Ex.: Ureia, MAP, YARA-001…"
             value={searchQuery}
             onChange={onSearchChange}
           />
@@ -73,6 +78,18 @@ export function ProdutoFiltersPanel({
           value={fornecedorId}
           onChange={onFornecedorChange}
           options={fornecedorOptions}
+        />
+        <Select
+          label="Estado"
+          value={estadoFilter}
+          onChange={onEstadoChange}
+          options={[{ value: '', label: 'Todos' }, ...ESTADOS_PRODUTO]}
+        />
+        <Select
+          label="Classe"
+          value={classeFilter}
+          onChange={onClasseChange}
+          options={[{ value: '', label: 'Todas' }, ...CLASSES_PRODUTO]}
         />
         <Select
           label="Status"

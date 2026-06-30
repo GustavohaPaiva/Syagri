@@ -1,23 +1,28 @@
-import { useEffect, useState } from 'react'
-import { Button } from '../ui/Button'
+import { useState } from 'react'
+import { ESTADOS_PRODUTO, CLASSES_PRODUTO } from '../../constants/mapeamentoCampos'
 import { Input } from '../ui/Input'
 import { Modal } from '../ui/Modal'
 import { ModalFormFooter } from '../ui/ModalFormFooter'
 import { Select } from '../ui/Select'
 
-const MOEDA_OPTIONS = [
-  { value: 'BRL', label: 'BRL' },
-  { value: 'USD', label: 'USD' },
-  { value: 'EUR', label: 'EUR' },
-]
-
 const EMPTY = {
-  sku_fornecedor: '',
   nome: '',
-  cultura: '',
-  quarter: '',
+  referencia_complementar: '',
+  estado: '',
+  classe: 'Convencional',
   preco_original: '',
-  moeda: 'BRL',
+}
+
+function buildForm(initial) {
+  if (!initial) return EMPTY
+  return {
+    nome: initial.nome ?? '',
+    referencia_complementar:
+      initial.referencia_complementar ?? initial.sku_fornecedor ?? '',
+    estado: initial.estado ?? '',
+    classe: initial.classe ?? 'Convencional',
+    preco_original: String(initial.preco_original ?? ''),
+  }
 }
 
 export function ModalStagingRowForm({
@@ -26,28 +31,13 @@ export function ModalStagingRowForm({
   onSave,
   initial,
   title = 'Adicionar produto',
+  loteMoeda = 'USD',
+  loteQuarter = '',
+  loteEstado = '',
 }) {
-  const [form, setForm] = useState(EMPTY)
+  const [form, setForm] = useState(() => buildForm(initial))
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    if (!open) return
-    setForm(
-      initial
-        ? {
-            sku_fornecedor: initial.sku_fornecedor ?? '',
-            nome: initial.nome ?? '',
-            cultura: initial.cultura ?? '',
-            quarter: initial.quarter ?? '',
-            preco_original: String(initial.preco_original ?? ''),
-            moeda: initial.moeda ?? 'BRL',
-          }
-        : EMPTY,
-    )
-    setError(null)
-    setSaving(false)
-  }, [open, initial])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -57,35 +47,25 @@ export function ModalStagingRowForm({
       String(form.preco_original).replace(/\./g, '').replace(',', '.'),
     )
 
-    if (!form.sku_fornecedor.trim()) {
-      setError('Informe o SKU.')
-      return
-    }
     if (!form.nome.trim()) {
-      setError('Informe o nome.')
-      return
-    }
-    if (!form.cultura.trim()) {
-      setError('Informe a cultura.')
-      return
-    }
-    if (!form.quarter.trim()) {
-      setError('Informe o quarter.')
+      setError('Informe o fertilizante.')
       return
     }
     if (!Number.isFinite(preco) || preco < 0) {
-      setError('Informe um preço válido.')
+      setError('Informe um preço de custo válido.')
       return
     }
 
     setSaving(true)
     const res = await onSave({
-      sku_fornecedor: form.sku_fornecedor.trim(),
+      sku_fornecedor: form.referencia_complementar.trim(),
+      referencia_complementar: form.referencia_complementar.trim(),
       nome: form.nome.trim(),
-      cultura: form.cultura.trim(),
-      quarter: form.quarter.trim(),
+      estado: form.estado.trim() || loteEstado,
+      classe: form.classe,
+      quarter: loteQuarter,
       preco_original: preco,
-      moeda: form.moeda,
+      moeda: loteMoeda,
     })
     setSaving(false)
 
@@ -117,54 +97,48 @@ export function ModalStagingRowForm({
         className="flex flex-col gap-4"
       >
         <Input
-          label="SKU"
-          value={form.sku_fornecedor}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, sku_fornecedor: e.target.value }))
-          }
-          disabled={saving}
-        />
-        <Input
-          label="Nome"
+          label="Fertilizante"
           value={form.nome}
           onChange={(e) => setForm((p) => ({ ...p, nome: e.target.value }))}
           disabled={saving}
         />
+        <Input
+          label="Referência complementar (opcional)"
+          value={form.referencia_complementar}
+          onChange={(e) =>
+            setForm((p) => ({ ...p, referencia_complementar: e.target.value }))
+          }
+          disabled={saving}
+        />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label="Cultura"
-            value={form.cultura}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, cultura: e.target.value }))
-            }
-            disabled={saving}
-          />
-          <Input
-            label="Quarter"
-            value={form.quarter}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, quarter: e.target.value }))
-            }
-            disabled={saving}
-          />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label="Preço"
-            value={form.preco_original}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, preco_original: e.target.value }))
-            }
+          <Select
+            label="Estado"
+            placeholder="Selecione…"
+            value={form.estado || loteEstado}
+            onChange={(e) => setForm((p) => ({ ...p, estado: e.target.value }))}
+            options={ESTADOS_PRODUTO}
             disabled={saving}
           />
           <Select
-            label="Moeda"
-            value={form.moeda}
-            onChange={(e) => setForm((p) => ({ ...p, moeda: e.target.value }))}
-            options={MOEDA_OPTIONS}
+            label="Classe"
+            value={form.classe}
+            onChange={(e) => setForm((p) => ({ ...p, classe: e.target.value }))}
+            options={CLASSES_PRODUTO}
             disabled={saving}
           />
         </div>
+        <Input
+          label="Preço de custo (USD)"
+          value={form.preco_original}
+          onChange={(e) =>
+            setForm((p) => ({ ...p, preco_original: e.target.value }))
+          }
+          disabled={saving}
+        />
+        <p className="text-xs text-slate-500">
+          Moeda do lote: {loteMoeda}
+          {loteQuarter ? ` · Quarter: ${loteQuarter}` : ''}
+        </p>
         {error ? (
           <p className="text-sm font-medium text-feedback-error" role="alert">
             {error}

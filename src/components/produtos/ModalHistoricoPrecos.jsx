@@ -36,6 +36,7 @@ export function ModalHistoricoPrecos({ open, onClose, produto, historico, loadin
       open={open}
       onClose={onClose}
       title={produto ? `Histórico — ${produto.nome}` : 'Histórico de preços'}
+      size="xl"
     >
       {loading ? (
         <EmptyState title="Carregando histórico…" />

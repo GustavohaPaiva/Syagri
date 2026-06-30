@@ -1,3 +1,4 @@
+import { formatProdutoDisplayNome } from '../../constants/mapeamentoCampos'
 import { Button } from '../ui/Button'
 import { DataTable } from '../ui/DataTable'
 import { EmptyState } from '../ui/EmptyState'
@@ -24,6 +25,7 @@ export function ProdutoTable({
   emptyMessage,
   onEdit,
   onInativar,
+  onReativar,
   onViewHistorico,
 }) {
   if (loading) {
@@ -44,25 +46,35 @@ export function ProdutoTable({
 
   const columns = [
     {
-      key: 'sku',
-      header: 'SKU',
-      cell: (row) => (
-        <span className="font-mono text-xs">{row.sku_fornecedor}</span>
-      ),
+      key: 'nome',
+      header: 'Produto',
+      cell: (row) =>
+        formatProdutoDisplayNome({
+          nome: row.nome,
+          referencia_complementar: row.referencia_complementar,
+          fornecedor_nome: row.fornecedor_nome,
+        }),
     },
-    { key: 'nome', header: 'Nome', cell: (row) => row.nome },
     {
       key: 'fornecedor',
       header: 'Fornecedor',
       cell: (row) => row.fornecedor_nome ?? '—',
     },
-    { key: 'cultura', header: 'Cultura', cell: (row) => row.cultura },
+    { key: 'estado', header: 'Estado', cell: (row) => row.estado ?? '—' },
+    { key: 'classe', header: 'Classe', cell: (row) => row.classe ?? 'Convencional' },
     { key: 'quarter', header: 'Quarter', cell: (row) => row.quarter },
     {
       key: 'preco',
-      header: 'Preço interno',
+      header: 'Custo R$',
       align: 'right',
       cell: (row) => formatBRL(row.preco_interno_calculado),
+    },
+    {
+      key: 'icms',
+      header: 'Custo - ICMS',
+      align: 'right',
+      cell: (row) =>
+        formatBRL(row.custo_icms ?? row.preco_interno_calculado * 0.96),
     },
     {
       key: 'status',
@@ -100,7 +112,16 @@ export function ProdutoTable({
             >
               Inativar
             </Button>
-          ) : null}
+          ) : (
+            <Button
+              type="button"
+              variant="secondary"
+              className="!px-2 !py-1 text-xs"
+              onClick={() => onReativar?.(row.id)}
+            >
+              Reativar
+            </Button>
+          )}
         </div>
       ),
     },
@@ -108,9 +129,11 @@ export function ProdutoTable({
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm sm:rounded-3xl">
-      <div className="p-4 sm:p-6">
-        <DataTable columns={columns} rows={rows} getRowKey={(row) => row.id} />
-      </div>
+      <DataTable
+        columns={columns}
+        rows={rows}
+        getRowKey={(row) => row.id}
+      />
     </section>
   )
 }
